@@ -193,6 +193,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .elim-row td{background:rgba(245,101,101,0.03);}
 .table-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text3);}
 .legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+.lock-banner{display:flex;align-items:center;gap:10px;background:rgba(245,200,66,0.08);border:1px solid var(--gold-border);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--gold);}
+.lock-banner .lock-icon{font-size:18px;flex-shrink:0;}
+.pick-locked{font-size:12px;color:var(--text2);padding:4px 8px;background:var(--surface3);border-radius:6px;border:1px solid var(--border);}
 
 @media(max-width:540px){
   .header{flex-direction:column;gap:10px;align-items:flex-start;}
@@ -784,16 +787,32 @@ function renderPicksTable(){
   const isMe=pi===meIndex;
   const myPicks=allPicks.filter(p=>p.playerIndex==pi);
   const done=myPicks.filter(p=>p.teamPick).length;
+  const totalDone=allPicks.filter(p=>p.teamPick&&!isPlayoff(p.matchNo)).length;
   document.getElementById('picks-prog-bar').style.width=Math.round((done/70)*100)+'%';
-  document.getElementById('picks-prog-label').textContent=`${done} / 70`;
+  document.getElementById('picks-prog-label').textContent=`${done} / 70 · Total: ${totalDone}/210${totalDone>=210?' 🔒':''}`;
   document.getElementById('picks-title').textContent=isMe?'📋 My Picks — '+playerNames[pi]:'👀 '+playerNames[pi]+"'s Picks";
 
+  // Lock check — all 210 picks made (3 players × 70 matches)
+  const totalPicks=allPicks.filter(p=>p.teamPick&&!isPlayoff(p.matchNo)).length;
+  const isLocked=totalPicks>=210;
+
+  // Show lock banner if locked
+  const lockBanner=isLocked
+    ? `<div class="lock-banner"><span class="lock-icon">🔒</span><div><strong>Picks are locked</strong><br><span style="font-size:12px;opacity:.8">All 210 picks have been made — no changes allowed.</span></div></div>`
+    : isMe && allPicks.filter(p=>p.playerIndex==meIndex&&p.teamPick).length===70
+      ? `<div class="lock-banner" style="background:rgba(62,207,142,0.08);border-color:rgba(62,207,142,.3);color:var(--green)"><span class="lock-icon">✅</span><div><strong>Your picks are complete!</strong><br><span style="font-size:12px;opacity:.8">Waiting for others to finish — ${totalPicks}/210 total picks made.</span></div></div>`
+      : '';
+
   const league=MATCHES.filter(m=>!isPlayoff(m[0]));
-  let html=`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe?'Your Pick':'Pick'}</th></tr></thead><tbody>`;
+  let html=lockBanner+`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe&&!isLocked?'Your Pick':'Pick'}</th></tr></thead><tbody>`;
   league.forEach(m=>{
     const saved=myPicks.find(p=>p.matchNo==m[0]);
     const hasPick=saved&&saved.teamPick;
-    if(isMe){
+    const pickCell = hasPick
+      ? `<span class="${isLocked?'locked-pick':'pick-made pick-select'}" style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:12px">🏏 ${saved.teamPick}</span>`
+      : `<span style="font-size:12px;color:var(--text3)">No pick yet</span>`;
+
+    if(isMe && !isLocked){
       // Editable
       html+=`<tr>
         <td class="match-num">${m[0]}</td>
@@ -806,12 +825,12 @@ function renderPicksTable(){
         </select></td>
       </tr>`;
     } else {
-      // Read-only view of someone else's picks
+      // Read-only (either locked, or viewing someone else)
       html+=`<tr>
         <td class="match-num">${m[0]}</td>
         <td class="match-date-cell">${m[1]}</td>
         <td><strong style="font-size:13px">${m[4]}</strong><br><span style="color:var(--text3);font-size:11px">vs ${m[5]} · ${m[6]}</span></td>
-        <td>${hasPick?`<span class="locked-pick">🏏 ${saved.teamPick}</span>`:`<span style="font-size:12px;color:var(--text3)">No pick yet</span>`}</td>
+        <td>${pickCell}</td>
       </tr>`;
     }
   });
@@ -828,6 +847,9 @@ function setPicksTab(i,el){
 
 async function savePick(playerIndex,matchNo,selectEl){
   if(playerIndex!==meIndex){toast('⚠ You can only edit your own picks');return;}
+  // Check lock — 210 picks = fully locked
+  const totalPicks=allPicks.filter(p=>p.teamPick&&!isPlayoff(p.matchNo)).length;
+  if(totalPicks>=210){toast('🔒 Picks are locked — all 210 picks have been made');selectEl.value=allPicks.find(p=>p.playerIndex==playerIndex&&p.matchNo==matchNo)?.teamPick||'';return;}
   const teamPick=selectEl.value;
   selectEl.classList.toggle('pick-made',!!teamPick);
   const res=await apiPost({action:'savePick',playerIndex,matchNo,teamPick});
