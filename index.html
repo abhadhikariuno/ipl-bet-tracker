@@ -173,12 +173,34 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .avatar-colors{--a0:#f5c842;--a1:#3ecf8e;--a2:#f56565;}
 
+/* ── IPL TABLE ── */
+.ipl-table{width:100%;border-collapse:collapse;font-size:13px;}
+.ipl-table th{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;}
+.ipl-table th:nth-child(2){text-align:left;}
+.ipl-table td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;}
+.ipl-table td:nth-child(2){text-align:left;}
+.ipl-table tr:last-child td{border-bottom:none;}
+.ipl-table tr:hover td{background:rgba(255,255,255,.02);}
+.ipl-table .pos{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);width:28px;}
+.ipl-table .team-name{font-size:13px;font-weight:500;color:var(--text);}
+.ipl-table .team-short{font-size:10px;color:var(--text3);margin-top:1px;}
+.ipl-table .stat{font-family:'DM Mono',monospace;font-size:13px;}
+.ipl-table .pts{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--gold);}
+.ipl-table .nrr-pos{color:var(--green);}
+.ipl-table .nrr-neg{color:var(--red);}
+.qualify-row td{background:rgba(62,207,142,0.04);}
+.qualify-row td:first-child{border-left:2px solid var(--green);}
+.elim-row td{background:rgba(245,101,101,0.03);}
+.table-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text3);}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+
 @media(max-width:540px){
   .header{flex-direction:column;gap:10px;align-items:flex-start;}
   .summary-grid{grid-template-columns:1fr;}
   .settings-names{grid-template-columns:1fr;}
   .names-grid{grid-template-columns:1fr;}
   .picks-table .match-date-cell{display:none;}
+  .ipl-table .hide-mobile{display:none;}
 }
 </style>
 </head>
@@ -249,6 +271,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
       <button class="tab active" onclick="showPage('calculator',this)">Calc</button>
       <button class="tab" onclick="showPage('picks',this)">My Picks</button>
       <button class="tab" onclick="showPage('ledger',this)">Ledger</button>
+      <button class="tab" onclick="showPage('table',this)">Table</button>
       <button class="tab" onclick="showPage('settings',this)">Settings</button>
     </div>
   </div>
@@ -266,7 +289,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
     </div>
     <div class="card">
       <div class="card-title">💰 Wager Setup</div>
-      <div class="stake-row"><label>Stake per player</label><span style="font-size:13px;color:var(--text2)">$</span><input type="number" id="stake" value="10" min="1" step="1"></div>
+      <div class="stake-row"><label>Stake per player</label><span style="font-size:13px;color:var(--text2)">$</span><input type="number" id="stake" value="10" min="1" step="1" id="stake-input"><span style="font-size:11px;color:var(--text3)" id="stake-note">League: fixed $10 · Adjust for playoffs</span></div>
       <div class="slbl">Player Picks</div>
       <div id="pa"></div>
     </div>
@@ -308,6 +331,18 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
         </div>
       </div>
       <div id="ledger-body"><div class="loading-row"><span class="spinner"></span>Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- IPL TABLE -->
+  <div id="page-table" class="page">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">🏆 IPL 2026 Points Table</div>
+        <button class="btn btn-sm" onclick="loadAll()" style="border-color:var(--border2);color:var(--text2)">↻ Refresh</button>
+      </div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Auto-calculated from saved match results. Updates whenever a result is logged.</p>
+      <div id="ipl-table-body"><div class="loading-row"><span class="spinner"></span>Loading…</div></div>
     </div>
   </div>
 
@@ -587,6 +622,7 @@ async function loadAll(){
   }
   renderPicksTable();
   renderLedger();
+  renderIPLTable();
   renderSettingsPage();
   const badge=document.getElementById('you-badge');
   if(badge&&meIndex>=0) badge.textContent='You: '+playerNames[meIndex];
@@ -601,6 +637,7 @@ function showPage(id,btn){
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='ledger') renderLedger();
+  if(id==='table') renderIPLTable();
   if(id==='picks'){activePicksTab=meIndex;renderPicksTable();}
 }
 
@@ -669,7 +706,9 @@ function syncWinner(){
 function buildWinnerSelect(m,po,extra){
   const ws=document.getElementById('ws');const cur=ws.value;
   const teams=po?extra:[m[4],m[5]];
-  ws.innerHTML='<option value="">— select winner —</option>'+teams.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+  ws.innerHTML='<option value="">— select winner —</option>'+
+    teams.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('')+
+    `<option value="NR"${cur==='NR'?' selected':''}>🌧 No Result (Rain)</option>`;
 }
 
 function calc(){
@@ -679,6 +718,20 @@ function calc(){
   const m=MATCHES[+document.getElementById('ms').value];
   if(picks.some(p=>!p)){toast('⚠ Pick a team for every player');return;}
   if(!winner){toast('⚠ Select the winning team');return;}
+  // P2 and P3 must always pick opposite teams
+  if(picks[1]&&picks[2]&&picks[1]===picks[2]){toast('⚠ '+playerNames[1]+' & '+playerNames[2]+' must pick opposite teams');return;}
+
+  // Rain / no result
+  if(winner==='NR'){
+    lastCalc={matchNo:m[0],matchLabel:isPlayoff(m[0])?m[4]:`${m[4]} vs ${m[5]}`,date:m[1],stake,picks,winner:'NR',results:[0,1,2].map(i=>({i,name:playerNames[i],det:'No result — rain',amt:0,b:null})),allied:false};
+    document.getElementById('result-area').innerHTML=`<div style="margin-top:14px">
+      ${[0,1,2].map(i=>`<div class="result-card result-neutral"><div><div class="r-name">${playerNames[i]}${i===meIndex?'<span class="badge you-chip">You</span>':''}</div><div class="r-detail">No result — rain 🌧</div></div><div class="r-amt zero">$0</div></div>`).join('')}
+      <div class="note">Match abandoned — no result. All stakes returned.</div>
+    </div>`;
+    document.getElementById('log-area').style.display='block';
+    return;
+  }
+
   const [p0,p1,p2]=picks;const allied=p0===p1;const half=stake/2;
   let results=[];
   if(allied){
@@ -686,10 +739,11 @@ function calc(){
     else if(p2===winner) results=[{i:0,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:1,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:2,det:`${p2} won vs allied`,amt:+stake,b:'s'}];
     else results=[0,1,2].map(i=>({i,det:`${picks[i]} — no result`,amt:0,b:i<2?'a':null}));
   } else {
-    const wc=picks.filter(p=>p===winner).length;
-    const pot=picks.filter(p=>p!==winner).length*stake;
-    const share=wc>0?pot/wc:0;
-    results=[0,1,2].map(i=>picks[i]===winner?{i,det:`${picks[i]} won`,amt:+share,b:'s'}:{i,det:`${picks[i]} lost`,amt:-stake,b:null});
+    // P2 & P3 always pick opposite — always a 2v1
+    // Winners (2 players) get +half each, loser pays full stake
+    results=[0,1,2].map(i=>picks[i]===winner
+      ?{i,det:`${picks[i]} won`,amt:+(stake/2),b:'s'}
+      :{i,det:`${picks[i]} lost`,amt:-stake,b:null});
   }
   lastCalc={matchNo:m[0],matchLabel:isPlayoff(m[0])?m[4]:`${m[4]} vs ${m[5]}`,date:m[1],stake,picks,winner,results:results.map(r=>({...r,name:playerNames[r.i]})),allied};
   const bhtml=b=>b==='a'?'<span class="badge ba">Allied</span>':b==='s'?'<span class="badge bs">Solo</span>':'';
@@ -805,10 +859,8 @@ function computePayouts(result){
     if(p0===winner) amts=[+half,+half,-stake];
     else if(p2===winner) amts=[-half,-half,+stake];
   } else {
-    const wc=picks.filter(p=>p===winner).length;
-    const pot=picks.filter(p=>p!==winner).length*stake;
-    const share=wc>0?pot/wc:0;
-    amts=picks.map(p=>p===winner?+share:-stake);
+    // Always 2v1 — winners get half stake each, loser pays full
+    amts=picks.map(p=>p===winner?+(stake/2):-stake);
   }
   return {picks,allied,amts};
 }
@@ -875,7 +927,7 @@ function renderSettingsPage(){
   playerNames.forEach((n,i)=>{const el=document.getElementById('pname'+i);if(el) el.value=n;});
   const u=document.getElementById('url-display');if(u) u.value=SCRIPT_URL;
   const r=document.getElementById('rule-display');
-  if(r) r.innerHTML=`If <strong>${playerNames[0]}</strong> & <strong>${playerNames[1]}</strong> pick the same team, they combine and bet together against <strong>${playerNames[2]}</strong>. Otherwise solo bets.`;
+  if(r) r.innerHTML=`<strong>${playerNames[0]}</strong> picks every match freely.<br><strong>${playerNames[1]}</strong> &amp; <strong>${playerNames[2]}</strong> always pick opposite teams.<br>Result is always a <strong>2v1</strong>: winners get <strong>+$5 each</strong>, loser pays <strong>-$10</strong>.<br>Stake is <strong>$10</strong> for league matches. Playoffs stake set separately.`;
 }
 function updateNames(){playerNames=[0,1,2].map(i=>document.getElementById('pname'+i).value.trim()||'Player '+(i+1));renderSettingsPage();}
 async function saveNamesToSheet(){
@@ -888,6 +940,98 @@ async function saveNamesToSheet(){
 }
 function resetAll(){if(!confirm('Reset everything on this device?')) return;localStorage.clear();location.reload();}
 function resetWho(){localStorage.removeItem('ipl26_me');location.reload();}
+
+// ══════════════════════════════════════════════════════════════
+//  IPL POINTS TABLE
+// ══════════════════════════════════════════════════════════════
+const TEAM_SHORT={
+  'Royal Challengers Bengaluru':'RCB',
+  'Mumbai Indians':'MI',
+  'Chennai Super Kings':'CSK',
+  'Kolkata Knight Riders':'KKR',
+  'Sunrisers Hyderabad':'SRH',
+  'Delhi Capitals':'DC',
+  'Punjab Kings':'PBKS',
+  'Rajasthan Royals':'RR',
+  'Lucknow Super Giants':'LSG',
+  'Gujarat Titans':'GT',
+  'TBD':'TBD'
+};
+const ALL_TEAMS=[
+  'Royal Challengers Bengaluru','Mumbai Indians','Chennai Super Kings',
+  'Kolkata Knight Riders','Sunrisers Hyderabad','Delhi Capitals',
+  'Punjab Kings','Rajasthan Royals','Lucknow Super Giants','Gujarat Titans'
+];
+
+function renderIPLTable(){
+  const el=document.getElementById('ipl-table-body');
+  if(!el) return;
+
+  // Build team stats from saved results
+  const stats={};
+  ALL_TEAMS.forEach(t=>{stats[t]={p:0,w:0,l:0,nr:0,pts:0};});
+
+  allResults.forEach(r=>{
+    if(r.winner==='__deleted__') return;
+    const m=MATCHES.find(m=>m[0]===r.matchNo);
+    if(!m||isPlayoff(m[0])) return;
+    const home=m[4],away=m[5],winner=r.winner;
+    if(winner==='NR'||winner==='nr'||winner.toLowerCase().includes('no result')){
+      // No result — rain
+      if(stats[home]) {stats[home].p++;stats[home].nr++;stats[home].pts+=1;}
+      if(stats[away]) {stats[away].p++;stats[away].nr++;stats[away].pts+=1;}
+    } else {
+      const loser=winner===home?away:home;
+      if(stats[winner]){stats[winner].p++;stats[winner].w++;stats[winner].pts+=2;}
+      if(stats[loser]) {stats[loser].p++;stats[loser].l++;}
+    }
+  });
+
+  const played=allResults.filter(r=>r.winner!=='__deleted__'&&!isPlayoff(r.matchNo)).length;
+  if(played===0){
+    el.innerHTML=`<div class="empty-state"><div class="e-icon">📊</div><p>No results logged yet.<br>Save match results to see the table update.</p></div>`;
+    return;
+  }
+
+  // Sort: pts desc, then wins desc, then name
+  const sorted=ALL_TEAMS.map(t=>({name:t,...stats[t]}))
+    .sort((a,b)=>b.pts-a.pts||b.w-a.w||a.name.localeCompare(b.name));
+
+  let rows='';
+  sorted.forEach((t,i)=>{
+    const pos=i+1;
+    const qualify=pos<=4;
+    const rowCls=qualify?'qualify-row':'';
+    const short=TEAM_SHORT[t.name]||t.name.slice(0,3).toUpperCase();
+    rows+=`<tr class="${rowCls}">
+      <td class="pos">${pos}</td>
+      <td><div class="team-name">${t.name}</div><div class="team-short">${short}</div></td>
+      <td class="stat hide-mobile">${t.p}</td>
+      <td class="stat">${t.w}</td>
+      <td class="stat">${t.l}</td>
+      <td class="stat hide-mobile">${t.nr}</td>
+      <td class="pts">${t.pts}</td>
+    </tr>`;
+  });
+
+  el.innerHTML=`
+    <table class="ipl-table">
+      <thead><tr>
+        <th class="pos">#</th>
+        <th style="text-align:left">Team</th>
+        <th class="hide-mobile">P</th>
+        <th>W</th>
+        <th>L</th>
+        <th class="hide-mobile">NR</th>
+        <th>Pts</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="table-legend">
+      <span><span class="legend-dot" style="background:var(--green)"></span>Qualify for playoffs (top 4)</span>
+      <span style="color:var(--text3)">${played} of 70 results logged</span>
+    </div>`;
+}
 
 // ══════════════════════════════════════════════════════════════
 //  TOAST
