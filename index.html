@@ -458,67 +458,74 @@ window.onload=()=>{
 };
 
 // ══════════════════════════════════════════════════════════════
-//  API
+//  API — uses JSONP to bypass CORS completely
+//  (fetch() gets blocked by Apps Script redirects; script tags never do)
 // ══════════════════════════════════════════════════════════════
-function setSyncStatus(state,label){
-  const dot=document.getElementById('sync-dot');
-  const lbl=document.getElementById('sync-label');
-  dot.className='sync-dot '+state;
-  lbl.textContent=label;
+let _cbCounter = 0;
+
+function jsonp(params) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_ipl_cb_' + (++_cbCounter);
+    const timeout = setTimeout(() => {
+      delete window[cbName];
+      reject(new Error('Request timed out'));
+    }, 15000);
+
+    window[cbName] = (data) => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (data && data.error) reject(new Error(data.error));
+      else resolve(data);
+    };
+
+    params.callback = cbName;
+    const qs = Object.entries(params).map(([k,v]) => encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const url = SCRIPT_URL + '?' + qs;
+
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      reject(new Error('Script load failed — check your Apps Script URL'));
+    };
+    document.head.appendChild(script);
+    // clean up script tag after callback fires
+    setTimeout(() => { if (script.parentNode) script.parentNode.removeChild(script); }, 20000);
+  });
 }
 
-async function apiFetch(params){
-  setSyncStatus('syncing','Syncing…');
-  try{
-    const url=SCRIPT_URL+'?'+new URLSearchParams(params);
-    const res=await fetch(url);
-    const text=await res.text();
-    let data;
-    try{ data=JSON.parse(text); } catch(e2){ throw new Error('Bad response: '+text.slice(0,120)); }
-    if(data.error) throw new Error(data.error);
-    setSyncStatus('ok','Synced ✓');
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (dot) dot.className = 'sync-dot ' + state;
+  if (lbl) lbl.textContent = label;
+}
+
+async function apiFetch(params) {
+  setSyncStatus('syncing', 'Syncing…');
+  try {
+    const data = await jsonp(params);
+    setSyncStatus('ok', 'Synced ✓');
     return data;
-  }catch(e){
-    setSyncStatus('err','Check URL');
-    console.error('Fetch error:',e.message);
+  } catch(e) {
+    setSyncStatus('err', 'Check URL');
+    console.error('apiFetch error:', e.message);
     return null;
   }
 }
 
-// Route writes through GET params to avoid CORS preflight (Apps Script limitation)
-async function apiPost(body){
-  setSyncStatus('syncing','Saving…');
-  try{
-    const params=new URLSearchParams();
-    for(const k in body) params.append(k, body[k]);
-    const url=SCRIPT_URL+'?'+params.toString();
-    const res=await fetch(url);
-    const data=await res.json();
-    if(data.error) throw new Error(data.error);
-    setSyncStatus('ok','Saved ✓');
+async function apiPost(params) {
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    const data = await jsonp(params);
+    setSyncStatus('ok', 'Saved ✓');
     return data;
-  }catch(e){
-    setSyncStatus('err','Failed — check URL');
-    console.error('API error:',e);
+  } catch(e) {
+    setSyncStatus('err', 'Failed');
+    console.error('apiPost error:', e.message);
     return null;
   }
-}
-
-async function loadAll(){
-  const data=await apiFetch({action:'getAll'});
-  if(!data) return;
-  allPicks=data.picks||[];
-  allResults=data.results||[];
-  // Sync names from sheet if set
-  if(data.config){
-    [0,1,2].forEach(i=>{
-      if(data.config['name'+i]) playerNames[i]=data.config['name'+i];
-    });
-    localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
-    renderSettingsPage();
-  }
-  renderPicksTable();
-  renderLedger();
 }
 
 // ══════════════════════════════════════════════════════════════
