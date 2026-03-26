@@ -472,24 +472,34 @@ async function apiFetch(params){
   try{
     const url=SCRIPT_URL+'?'+new URLSearchParams(params);
     const res=await fetch(url);
-    const data=await res.json();
-    setSyncStatus('ok','Synced');
+    const text=await res.text();
+    let data;
+    try{ data=JSON.parse(text); } catch(e2){ throw new Error('Bad response: '+text.slice(0,120)); }
+    if(data.error) throw new Error(data.error);
+    setSyncStatus('ok','Synced ✓');
     return data;
   }catch(e){
-    setSyncStatus('err','Offline');
+    setSyncStatus('err','Check URL');
+    console.error('Fetch error:',e.message);
     return null;
   }
 }
 
+// Route writes through GET params to avoid CORS preflight (Apps Script limitation)
 async function apiPost(body){
   setSyncStatus('syncing','Saving…');
   try{
-    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(body)});
+    const params=new URLSearchParams();
+    for(const k in body) params.append(k, body[k]);
+    const url=SCRIPT_URL+'?'+params.toString();
+    const res=await fetch(url);
     const data=await res.json();
-    setSyncStatus('ok','Saved');
+    if(data.error) throw new Error(data.error);
+    setSyncStatus('ok','Saved ✓');
     return data;
   }catch(e){
-    setSyncStatus('err','Failed');
+    setSyncStatus('err','Failed — check URL');
+    console.error('API error:',e);
     return null;
   }
 }
