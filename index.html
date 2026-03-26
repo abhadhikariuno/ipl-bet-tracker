@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL 2026 Bet Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c10; --surface:#12161e; --surface2:#1a1f2b; --surface3:#222838;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --gold:#f5c842; --gold-dim:rgba(245,200,66,0.12); --gold-border:rgba(245,200,66,0.28);
+  --green:#3ecf8e; --green-dim:rgba(62,207,142,0.1);
+  --red:#f56565; --red-dim:rgba(245,101,101,0.1);
+  --blue:#60a5fa; --blue-dim:rgba(96,165,250,0.1);
+  --purple:#c084fc; --purple-dim:rgba(192,132,252,0.1);
+  --text:#e8eaf0; --text2:#8b91a7; --text3:#555c73;
+  --r:12px; --rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:60px;}
+
+/* ── SETUP OVERLAY ── */
+#setup-overlay{position:fixed;inset:0;background:rgba(10,12,16,0.97);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.setup-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:32px;max-width:440px;width:100%;}
+.setup-box h2{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;}
+.setup-box p{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6;}
+.setup-field{margin-bottom:14px;}
+.setup-field label{display:block;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.setup-field input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 13px;outline:none;}
+.setup-field input:focus{border-color:var(--gold);}
+.setup-field input.url-input{font-family:'DM Mono',monospace;font-size:12px;}
+.setup-names{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+.btn-setup{width:100%;padding:12px;border-radius:var(--rs);border:1px solid var(--gold-border);background:var(--gold-dim);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;cursor:pointer;transition:all .2s;}
+.btn-setup:hover{background:var(--gold);color:#0a0c10;}
+.setup-note{font-size:11px;color:var(--text3);margin-top:12px;line-height:1.7;}
+.setup-note a{color:var(--gold);text-decoration:none;}
+
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,#0d1117 0%,#161b27 100%);border-bottom:1px solid var(--gold-border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.logo{width:36px;height:36px;background:var(--gold);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.header h1{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);}
+.header-sub{font-size:11px;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-top:1px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block;margin-right:5px;transition:background .3s;}
+.sync-dot.syncing{background:var(--gold);animation:pulse 1s infinite;}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.err{background:var(--red);}
+.sync-label{font-size:11px;color:var(--text3);}
+
+.tab-bar{display:flex;gap:3px;background:var(--surface2);border-radius:10px;padding:3px;}
+.tab{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .2s;border:none;background:none;white-space:nowrap;}
+.tab.active{background:var(--gold);color:#0a0c10;font-weight:600;}
+.tab:hover:not(.active){color:var(--text);background:var(--surface3);}
+
+/* ── MAIN ── */
+.main{max-width:720px;margin:0 auto;padding:20px 14px;}
+.page{display:none;animation:fadeIn .2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;color:var(--gold);margin-bottom:12px;}
+.slbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:7px;}
+
+/* ── INPUTS ── */
+select,input[type=text],input[type=number]{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:8px 11px;outline:none;transition:border-color .2s;-webkit-appearance:none;}
+select:focus,input:focus{border-color:var(--gold);}
+select option{background:#1a1f2b;}
+
+/* ── PLAYER BADGE ── */
+.player-row{display:grid;grid-template-columns:96px 1fr;gap:9px;align-items:center;margin-bottom:9px;}
+.pbadge{font-size:13px;font-weight:600;color:var(--gold);background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:6px;padding:5px 10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── MATCH INFO ── */
+.match-info{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 13px;font-size:13px;color:var(--text2);line-height:1.9;margin-bottom:12px;}
+.match-info strong{color:var(--text);}
+.vs{color:var(--gold);font-weight:700;margin:0 6px;}
+
+/* ── DIVIDER ── */
+hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+/* ── BUTTONS ── */
+.btn{width:100%;padding:11px;border-radius:var(--rs);border:1px solid var(--gold-border);background:var(--gold-dim);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;cursor:pointer;transition:all .2s;}
+.btn:hover{background:var(--gold);color:#0a0c10;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-green{border-color:rgba(62,207,142,.3);background:rgba(62,207,142,.08);color:var(--green);margin-top:10px;}
+.btn-green:hover{background:var(--green);color:#0a0c10;}
+.btn-sm{padding:6px 12px;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;letter-spacing:0;width:auto;border-radius:7px;}
+.btn-danger{border-color:rgba(245,101,101,.3);background:rgba(245,101,101,.08);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+
+/* ── RESULT CARDS ── */
+.result-card{border-radius:var(--rs);padding:12px 15px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:flex-start;border:1px solid;animation:fadeIn .25s ease;}
+.result-win{background:var(--green-dim);border-color:rgba(62,207,142,.25);}
+.result-lose{background:var(--red-dim);border-color:rgba(245,101,101,.25);}
+.result-neutral{background:var(--surface2);border-color:var(--border);}
+.r-name{font-size:15px;font-weight:600;color:var(--text);}
+.r-detail{font-size:12px;color:var(--text2);margin-top:3px;}
+.r-amt{font-size:22px;font-family:'DM Mono',monospace;font-weight:500;margin-top:2px;}
+.win-c{color:var(--green)}.lose-c{color:var(--red);}
+.note{font-size:12px;color:var(--text2);background:var(--surface2);border-radius:7px;padding:8px 12px;margin-top:8px;border:1px solid var(--border);}
+
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;vertical-align:middle;}
+.ba{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(96,165,250,.2);}
+.bs{background:var(--green-dim);color:var(--green);border:1px solid rgba(62,207,142,.2);}
+.bp{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(192,132,252,.2);}
+
+/* ── SEASON PICKS PAGE ── */
+.picks-tabs{display:flex;gap:4px;margin-bottom:14px;}
+.picks-tab{flex:1;padding:8px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border:1px solid var(--border);background:var(--surface2);text-align:center;transition:all .2s;}
+.picks-tab.active{border-color:var(--gold-border);background:var(--gold-dim);color:var(--gold);}
+.picks-tab:hover:not(.active){border-color:var(--border2);color:var(--text);}
+
+.picks-table{width:100%;border-collapse:collapse;}
+.picks-table th{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+.picks-table td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.picks-table tr:last-child td{border-bottom:none;}
+.picks-table tr:hover td{background:rgba(255,255,255,.02);}
+.match-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:36px;}
+.match-date-cell{font-size:11px;color:var(--text3);width:90px;}
+.match-teams-cell{font-size:12px;color:var(--text2);}
+.match-teams-cell strong{color:var(--text);font-size:13px;}
+.pick-select{font-size:12px;padding:5px 8px;border-radius:6px;}
+.pick-made{font-size:12px;color:var(--gold);background:var(--gold-dim);border-color:var(--gold-border);}
+.picks-progress{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.progress-bar-wrap{flex:1;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;}
+.progress-bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .4s ease;}
+.progress-label{font-size:12px;color:var(--text2);white-space:nowrap;font-family:'DM Mono',monospace;}
+
+/* ── LEDGER ── */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:14px;text-align:center;}
+.s-name{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:7px;}
+.s-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;}
+.s-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.positive{color:var(--green);} .negative{color:var(--red);} .zero{color:var(--text3);}
+
+.ledger-table{width:100%;border-collapse:collapse;font-size:13px;}
+.ledger-table th{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+.ledger-table th:not(:nth-child(1)):not(:nth-child(2)){text-align:right;}
+.ledger-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.ledger-table tr:last-child td{border-bottom:none;}
+.ledger-table tr:hover td{background:rgba(255,255,255,.02);}
+.amt-cell{font-family:'DM Mono',monospace;text-align:right;}
+.winner-tag{font-size:10px;color:var(--gold);background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:4px;padding:1px 6px;display:inline-block;font-weight:600;}
+.del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;}
+.del-btn:hover{color:var(--red);background:var(--red-dim);}
+
+/* ── SETTINGS ── */
+.settings-names{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
+.setting-field label{display:block;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+
+/* ── STAKE ROW ── */
+.stake-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.stake-row label{font-size:13px;color:var(--text2);white-space:nowrap;}
+.stake-row input{width:90px;text-align:center;font-family:'DM Mono',monospace;}
+
+/* ── LOADING ── */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-row{text-align:center;padding:32px;color:var(--text3);font-size:13px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);}
+.empty-state .e-icon{font-size:36px;margin-bottom:12px;}
+
+/* ── MOBILE ── */
+@media(max-width:540px){
+  .header{flex-direction:column;gap:10px;align-items:flex-start;}
+  .summary-grid{grid-template-columns:1fr;}
+  .settings-names{grid-template-columns:1fr;}
+  .setup-names{grid-template-columns:1fr;}
+  .picks-table .match-date-cell{display:none;}
+}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--text);opacity:0;transition:all .3s;z-index:9999;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP OVERLAY ── -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <h2>🏏 IPL 2026 Bet Tracker</h2>
+    <p>Enter your Google Apps Script URL and player names to get started. This only needs to be done once — settings are saved to this browser.</p>
+
+    <div class="setup-field">
+      <label>Google Apps Script Web App URL</label>
+      <input type="text" id="setup-url" class="url-input" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+
+    <div class="slbl" style="margin-bottom:8px">Player Names</div>
+    <div class="setup-names">
+      <div class="setup-field"><label>Player 1</label><input type="text" id="sn0" placeholder="Player 1"></div>
+      <div class="setup-field"><label>Player 2</label><input type="text" id="sn1" placeholder="Player 2"></div>
+      <div class="setup-field"><label>Player 3</label><input type="text" id="sn2" placeholder="Player 3"></div>
+    </div>
+
+    <button class="btn-setup" onclick="setupSave()">SAVE &amp; LAUNCH →</button>
+
+    <div class="setup-note">
+      <strong style="color:var(--text2)">How to set up the Google Sheet:</strong><br>
+      1. Open <a href="https://script.google.com" target="_blank">script.google.com</a> → New Project<br>
+      2. Paste the contents of <strong>Code.gs</strong> (provided separately)<br>
+      3. Click <strong>Deploy → New deployment → Web App</strong><br>
+      4. Execute as: <em>Me</em> · Who has access: <em>Anyone</em><br>
+      5. Copy the Web App URL and paste it above<br>
+      6. Share this page URL with all 3 players — data syncs automatically
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="header" style="display:none" id="main-header">
+  <div class="header-left">
+    <div class="logo">🏏</div>
+    <div>
+      <h1>IPL 2026 Bet Tracker</h1>
+      <div class="header-sub">TATA IPL · 70 Matches + Playoffs</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="display:flex;align-items:center">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span class="sync-label" id="sync-label">Connecting…</span>
+    </div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="showPage('calculator',this)">Calculator</button>
+      <button class="tab" onclick="showPage('picks',this)">My Picks</button>
+      <button class="tab" onclick="showPage('ledger',this)">Ledger</button>
+      <button class="tab" onclick="showPage('settings',this)">Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGES ── -->
+<div class="main" style="display:none" id="main-content">
+
+  <!-- CALCULATOR -->
+  <div id="page-calculator" class="page active">
+    <div class="card">
+      <div class="card-title">🗓 Select Match</div>
+      <select id="ms" onchange="onMatchChange()"></select>
+      <div class="match-info" id="mi" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 Wager Setup</div>
+      <div class="stake-row"><label>Stake per player</label><span style="font-size:13px;color:var(--text2)">$</span><input type="number" id="stake" value="10" min="1" step="1"></div>
+      <div class="slbl">Player Picks</div>
+      <div id="pa"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏆 Result</div>
+      <div class="slbl">Winning Team</div>
+      <select id="ws" style="margin-bottom:14px"></select>
+      <button class="btn" onclick="calc()">CALCULATE PAYOUTS →</button>
+      <div id="result-area"></div>
+      <div id="log-area" style="display:none">
+        <button class="btn btn-green" onclick="logResult()">SAVE RESULT TO SHARED LEDGER →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEASON PICKS -->
+  <div id="page-picks" class="page">
+    <div class="card">
+      <div class="card-title">📋 Season Picks — All 70 Matches</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Each player picks their team for every match before it's played. Picks sync to the shared Google Sheet so everyone can see them.</p>
+      <div class="picks-tabs" id="picks-tabs"></div>
+      <div class="picks-progress">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="picks-prog-bar" style="width:0%"></div></div>
+        <div class="progress-label" id="picks-prog-label">0 / 70</div>
+      </div>
+      <div id="picks-table-wrap"><div class="loading-row"><span class="spinner"></span>Loading picks…</div></div>
+    </div>
+  </div>
+
+  <!-- LEDGER -->
+  <div id="page-ledger" class="page">
+    <div class="summary-grid" id="summary-grid"></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">📊 Season Ledger</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="loadAll()" style="border-color:var(--border2);color:var(--text2)">↻ Refresh</button>
+          <button class="btn btn-sm btn-danger" onclick="clearLedger()">Clear All</button>
+        </div>
+      </div>
+      <div id="ledger-body"><div class="loading-row"><span class="spinner"></span>Loading ledger…</div></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="card">
+      <div class="card-title">👤 Player Names</div>
+      <div class="settings-names">
+        <div class="setting-field"><label>Player 1</label><input type="text" id="pname0" oninput="updateNames()"></div>
+        <div class="setting-field"><label>Player 2</label><input type="text" id="pname1" oninput="updateNames()"></div>
+        <div class="setting-field"><label>Player 3</label><input type="text" id="pname2" oninput="updateNames()"></div>
+      </div>
+      <button class="btn" onclick="saveNamesToSheet()">SAVE NAMES →</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🔗 Connection</div>
+      <div class="slbl">Apps Script URL</div>
+      <input type="text" id="url-display" style="font-family:'DM Mono',monospace;font-size:12px;margin-bottom:12px" readonly>
+      <button class="btn btn-sm btn-danger" onclick="resetSetup()" style="width:auto">Reset Setup</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📌 Wager Rule</div>
+      <div class="match-info" id="rule-display"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════════════════════
+const MATCHES=[
+  [1,"28 Mar","Sat","7:30 PM","Royal Challengers Bengaluru","Sunrisers Hyderabad","Bengaluru"],
+  [2,"29 Mar","Sun","7:30 PM","Mumbai Indians","Kolkata Knight Riders","Mumbai"],
+  [3,"30 Mar","Mon","7:30 PM","Rajasthan Royals","Chennai Super Kings","Guwahati"],
+  [4,"31 Mar","Tue","7:30 PM","Punjab Kings","Gujarat Titans","New Chandigarh"],
+  [5,"1 Apr","Wed","7:30 PM","Lucknow Super Giants","Delhi Capitals","Lucknow"],
+  [6,"2 Apr","Thu","7:30 PM","Kolkata Knight Riders","Sunrisers Hyderabad","Kolkata"],
+  [7,"3 Apr","Fri","7:30 PM","Chennai Super Kings","Punjab Kings","Chennai"],
+  [8,"4 Apr","Sat","3:30 PM","Delhi Capitals","Mumbai Indians","Delhi"],
+  [9,"4 Apr","Sat","7:30 PM","Gujarat Titans","Rajasthan Royals","Ahmedabad"],
+  [10,"5 Apr","Sun","3:30 PM","Sunrisers Hyderabad","Lucknow Super Giants","Hyderabad"],
+  [11,"5 Apr","Sun","7:30 PM","Royal Challengers Bengaluru","Chennai Super Kings","Bengaluru"],
+  [12,"6 Apr","Mon","7:30 PM","Kolkata Knight Riders","Punjab Kings","Kolkata"],
+  [13,"7 Apr","Tue","7:30 PM","Rajasthan Royals","Mumbai Indians","Guwahati"],
+  [14,"8 Apr","Wed","7:30 PM","Delhi Capitals","Gujarat Titans","Delhi"],
+  [15,"9 Apr","Thu","7:30 PM","Kolkata Knight Riders","Lucknow Super Giants","Kolkata"],
+  [16,"10 Apr","Fri","7:30 PM","Rajasthan Royals","Royal Challengers Bengaluru","Guwahati"],
+  [17,"11 Apr","Sat","3:30 PM","Punjab Kings","Sunrisers Hyderabad","New Chandigarh"],
+  [18,"11 Apr","Sat","7:30 PM","Chennai Super Kings","Delhi Capitals","Chennai"],
+  [19,"12 Apr","Sun","3:30 PM","Lucknow Super Giants","Gujarat Titans","Lucknow"],
+  [20,"12 Apr","Sun","7:30 PM","Mumbai Indians","Royal Challengers Bengaluru","Mumbai"],
+  [21,"13 Apr","Mon","7:30 PM","Sunrisers Hyderabad","Rajasthan Royals","Hyderabad"],
+  [22,"14 Apr","Tue","7:30 PM","Chennai Super Kings","Kolkata Knight Riders","Chennai"],
+  [23,"15 Apr","Wed","7:30 PM","Royal Challengers Bengaluru","Lucknow Super Giants","Bengaluru"],
+  [24,"16 Apr","Thu","7:30 PM","Mumbai Indians","Punjab Kings","Mumbai"],
+  [25,"17 Apr","Fri","7:30 PM","Gujarat Titans","Kolkata Knight Riders","Ahmedabad"],
+  [26,"18 Apr","Sat","3:30 PM","Royal Challengers Bengaluru","Delhi Capitals","Bengaluru"],
+  [27,"18 Apr","Sat","7:30 PM","Sunrisers Hyderabad","Chennai Super Kings","Hyderabad"],
+  [28,"19 Apr","Sun","3:30 PM","Kolkata Knight Riders","Rajasthan Royals","Kolkata"],
+  [29,"19 Apr","Sun","7:30 PM","Punjab Kings","Lucknow Super Giants","New Chandigarh"],
+  [30,"20 Apr","Mon","7:30 PM","Gujarat Titans","Mumbai Indians","Ahmedabad"],
+  [31,"21 Apr","Tue","7:30 PM","Sunrisers Hyderabad","Delhi Capitals","Hyderabad"],
+  [32,"22 Apr","Wed","7:30 PM","Lucknow Super Giants","Rajasthan Royals","Lucknow"],
+  [33,"23 Apr","Thu","7:30 PM","Mumbai Indians","Chennai Super Kings","Mumbai"],
+  [34,"24 Apr","Fri","7:30 PM","Royal Challengers Bengaluru","Gujarat Titans","Bengaluru"],
+  [35,"25 Apr","Sat","3:30 PM","Delhi Capitals","Punjab Kings","Delhi"],
+  [36,"25 Apr","Sat","7:30 PM","Rajasthan Royals","Sunrisers Hyderabad","Jaipur"],
+  [37,"26 Apr","Sun","3:30 PM","Gujarat Titans","Chennai Super Kings","Ahmedabad"],
+  [38,"26 Apr","Sun","7:30 PM","Lucknow Super Giants","Kolkata Knight Riders","Lucknow"],
+  [39,"27 Apr","Mon","7:30 PM","Delhi Capitals","Royal Challengers Bengaluru","Delhi"],
+  [40,"28 Apr","Tue","7:30 PM","Punjab Kings","Rajasthan Royals","New Chandigarh"],
+  [41,"29 Apr","Wed","7:30 PM","Mumbai Indians","Sunrisers Hyderabad","Mumbai"],
+  [42,"30 Apr","Thu","7:30 PM","Gujarat Titans","Royal Challengers Bengaluru","Ahmedabad"],
+  [43,"1 May","Fri","7:30 PM","Rajasthan Royals","Delhi Capitals","Jaipur"],
+  [44,"2 May","Sat","7:30 PM","Chennai Super Kings","Mumbai Indians","Chennai"],
+  [45,"3 May","Sun","3:30 PM","Sunrisers Hyderabad","Kolkata Knight Riders","Hyderabad"],
+  [46,"3 May","Sun","7:30 PM","Gujarat Titans","Punjab Kings","Ahmedabad"],
+  [47,"4 May","Mon","7:30 PM","Mumbai Indians","Lucknow Super Giants","Mumbai"],
+  [48,"5 May","Tue","7:30 PM","Delhi Capitals","Chennai Super Kings","Delhi"],
+  [49,"6 May","Wed","7:30 PM","Sunrisers Hyderabad","Punjab Kings","Hyderabad"],
+  [50,"7 May","Thu","7:30 PM","Lucknow Super Giants","Royal Challengers Bengaluru","Lucknow"],
+  [51,"8 May","Fri","7:30 PM","Delhi Capitals","Kolkata Knight Riders","Delhi"],
+  [52,"9 May","Sat","7:30 PM","Rajasthan Royals","Gujarat Titans","Jaipur"],
+  [53,"10 May","Sun","3:30 PM","Chennai Super Kings","Lucknow Super Giants","Chennai"],
+  [54,"10 May","Sun","7:30 PM","Royal Challengers Bengaluru","Mumbai Indians","Raipur"],
+  [55,"11 May","Mon","7:30 PM","Punjab Kings","Delhi Capitals","Dharamshala"],
+  [56,"12 May","Tue","7:30 PM","Gujarat Titans","Sunrisers Hyderabad","Ahmedabad"],
+  [57,"13 May","Wed","7:30 PM","Royal Challengers Bengaluru","Kolkata Knight Riders","Raipur"],
+  [58,"14 May","Thu","7:30 PM","Punjab Kings","Mumbai Indians","Dharamshala"],
+  [59,"15 May","Fri","7:30 PM","Lucknow Super Giants","Chennai Super Kings","Lucknow"],
+  [60,"16 May","Sat","7:30 PM","Kolkata Knight Riders","Gujarat Titans","Kolkata"],
+  [61,"17 May","Sun","3:30 PM","Punjab Kings","Royal Challengers Bengaluru","Dharamshala"],
+  [62,"17 May","Sun","7:30 PM","Delhi Capitals","Rajasthan Royals","Delhi"],
+  [63,"18 May","Mon","7:30 PM","Chennai Super Kings","Sunrisers Hyderabad","Chennai"],
+  [64,"19 May","Tue","7:30 PM","Rajasthan Royals","Lucknow Super Giants","Jaipur"],
+  [65,"20 May","Wed","7:30 PM","Kolkata Knight Riders","Mumbai Indians","Kolkata"],
+  [66,"21 May","Thu","7:30 PM","Chennai Super Kings","Gujarat Titans","Chennai"],
+  [67,"22 May","Fri","7:30 PM","Sunrisers Hyderabad","Royal Challengers Bengaluru","Hyderabad"],
+  [68,"23 May","Sat","7:30 PM","Lucknow Super Giants","Punjab Kings","Lucknow"],
+  [69,"24 May","Sun","3:30 PM","Mumbai Indians","Rajasthan Royals","Mumbai"],
+  [70,"24 May","Sun","7:30 PM","Kolkata Knight Riders","Delhi Capitals","Kolkata"],
+  [71,"TBC","—","TBC","Qualifier 1","TBD","TBC — Bengaluru"],
+  [72,"TBC","—","TBC","Eliminator","TBD","TBC"],
+  [73,"TBC","—","TBC","Qualifier 2","TBD","TBC"],
+  [74,"31 May","Sat","TBC","Final","TBD","Bengaluru"],
+];
+const PLAYOFF_NOS=[71,72,73,74];
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+let SCRIPT_URL='';
+let playerNames=['Player 1','Player 2','Player 3'];
+let allPicks=[];   // [{playerIndex, matchNo, teamPick}]
+let allResults=[]; // [{matchNo, winner, stake}]
+let lastCalc=null;
+let activePicksPlayer=0;
+
+function isPlayoff(no){return PLAYOFF_NOS.includes(no);}
+
+// ══════════════════════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════════════════════
+function setupSave(){
+  const url=document.getElementById('setup-url').value.trim();
+  const n=[0,1,2].map(i=>document.getElementById('sn'+i).value.trim()||'Player '+(i+1));
+  if(!url){alert('Please paste your Apps Script URL.');return;}
+  SCRIPT_URL=url;
+  playerNames=n;
+  localStorage.setItem('ipl26_url',url);
+  localStorage.setItem('ipl26_names',JSON.stringify(n));
+  launchApp();
+}
+
+function resetSetup(){
+  if(!confirm('Reset all local settings? The Google Sheet data is kept.')) return;
+  localStorage.removeItem('ipl26_url');
+  localStorage.removeItem('ipl26_names');
+  location.reload();
+}
+
+function launchApp(){
+  document.getElementById('setup-overlay').style.display='none';
+  document.getElementById('main-header').style.display='flex';
+  document.getElementById('main-content').style.display='block';
+  buildMatchSelect();
+  onMatchChange();
+  renderSettingsPage();
+  buildPicksTabs();
+  loadAll();
+}
+
+window.onload=()=>{
+  const savedUrl=localStorage.getItem('ipl26_url');
+  const savedNames=localStorage.getItem('ipl26_names');
+  if(savedUrl){
+    SCRIPT_URL=savedUrl;
+    if(savedNames) try{playerNames=JSON.parse(savedNames);}catch(e){}
+    launchApp();
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  API
+// ══════════════════════════════════════════════════════════════
+function setSyncStatus(state,label){
+  const dot=document.getElementById('sync-dot');
+  const lbl=document.getElementById('sync-label');
+  dot.className='sync-dot '+state;
+  lbl.textContent=label;
+}
+
+async function apiFetch(params){
+  setSyncStatus('syncing','Syncing…');
+  try{
+    const url=SCRIPT_URL+'?'+new URLSearchParams(params);
+    const res=await fetch(url);
+    const data=await res.json();
+    setSyncStatus('ok','Synced');
+    return data;
+  }catch(e){
+    setSyncStatus('err','Offline');
+    return null;
+  }
+}
+
+async function apiPost(body){
+  setSyncStatus('syncing','Saving…');
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(body)});
+    const data=await res.json();
+    setSyncStatus('ok','Saved');
+    return data;
+  }catch(e){
+    setSyncStatus('err','Failed');
+    return null;
+  }
+}
+
+async function loadAll(){
+  const data=await apiFetch({action:'getAll'});
+  if(!data) return;
+  allPicks=data.picks||[];
+  allResults=data.results||[];
+  // Sync names from sheet if set
+  if(data.config){
+    [0,1,2].forEach(i=>{
+      if(data.config['name'+i]) playerNames[i]=data.config['name'+i];
+    });
+    localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
+    renderSettingsPage();
+  }
+  renderPicksTable();
+  renderLedger();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════════════════════
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='ledger') renderLedger();
+  if(id==='picks') renderPicksTable();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CALCULATOR
+// ══════════════════════════════════════════════════════════════
+function buildMatchSelect(){
+  const ms=document.getElementById('ms');
+  ms.innerHTML='';
+  const phases=[
+    ['League — Phase 1 (Mar 28 – Apr 12)',MATCHES.slice(0,20)],
+    ['League — Phase 2 (Apr 13 – Apr 28)',MATCHES.slice(20,40)],
+    ['League — Phase 3 (Apr 29 – May 24)',MATCHES.slice(40,70)],
+    ['Playoffs',MATCHES.slice(70)]
+  ];
+  phases.forEach(([label,items])=>{
+    const og=document.createElement('optgroup');
+    og.label=label;
+    items.forEach(m=>{
+      const o=document.createElement('option');
+      o.value=m[0]-1;
+      o.textContent=isPlayoff(m[0])
+        ?`#${m[0]} — ${m[4]} (${m[1]})`
+        :`#${m[0]} — ${m[4]} vs ${m[5]} (${m[1]})`;
+      og.appendChild(o);
+    });
+    ms.appendChild(og);
+  });
+}
+
+function onMatchChange(){
+  const m=MATCHES[+document.getElementById('ms').value];
+  const po=isPlayoff(m[0]);
+  if(po){
+    document.getElementById('mi').innerHTML=`<strong>${m[4]}</strong> · ${m[1]} · ${m[6]}<br><span style="font-size:11px;color:var(--text3)">Teams TBD — type below once confirmed</span>`;
+  } else {
+    document.getElementById('mi').innerHTML=`<strong>${m[4]}</strong><span class="vs">vs</span><strong>${m[5]}</strong><br>${m[2]}, ${m[1]} · ${m[3]} IST · ${m[6]}`;
+  }
+  buildPlayerPicks(m,po);
+  buildWinnerSelect(m,po,[]);
+  document.getElementById('result-area').innerHTML='';
+  document.getElementById('log-area').style.display='none';
+  lastCalc=null;
+}
+
+function buildPlayerPicks(m,po){
+  const pa=document.getElementById('pa');
+  pa.innerHTML='';
+  const teams=po?[]:[m[4],m[5]];
+  playerNames.forEach((name,i)=>{
+    const row=document.createElement('div');
+    row.className='player-row';
+    // Pre-fill from season picks if available
+    const saved=allPicks.find(p=>p.playerIndex==i&&p.matchNo==m[0]);
+    if(po){
+      row.innerHTML=`<div class="pbadge">${name}</div><input type="text" id="p${i}" placeholder="Team name" oninput="syncWinner()" value="${saved?saved.teamPick:''}">`;
+    } else {
+      row.innerHTML=`<div class="pbadge">${name}</div><select id="p${i}" onchange="syncWinner()"><option value="">— pick —</option>${teams.map(t=>`<option value="${t}"${saved&&saved.teamPick===t?' selected':''}>${t}</option>`).join('')}</select>`;
+    }
+    pa.appendChild(row);
+  });
+}
+
+function syncWinner(){
+  const m=MATCHES[+document.getElementById('ms').value];
+  const po=isPlayoff(m[0]);
+  const picks=[0,1,2].map(i=>{const el=document.getElementById('p'+i);return el?el.value:''}).filter(Boolean);
+  buildWinnerSelect(m,po,[...new Set(picks)]);
+  document.getElementById('result-area').innerHTML='';
+  document.getElementById('log-area').style.display='none';
+}
+
+function buildWinnerSelect(m,po,extra){
+  const ws=document.getElementById('ws');
+  const cur=ws.value;
+  const teams=po?extra:[m[4],m[5]];
+  ws.innerHTML='<option value="">— select winner —</option>'+teams.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+}
+
+function calc(){
+  const stake=parseFloat(document.getElementById('stake').value)||10;
+  const picks=[0,1,2].map(i=>{const el=document.getElementById('p'+i);return el?el.value.trim():'';});
+  const winner=document.getElementById('ws').value;
+  const m=MATCHES[+document.getElementById('ms').value];
+  if(picks.some(p=>!p)){toast('⚠ Pick a team for every player');return;}
+  if(!winner){toast('⚠ Select the winning team');return;}
+
+  const [p0,p1,p2]=picks;
+  const allied=p0===p1;
+  const half=stake/2;
+  let results=[];
+  if(allied){
+    if(p0===winner){
+      results=[
+        {name:playerNames[0],det:`Allied (${p0}) won`,amt:+half,b:'a'},
+        {name:playerNames[1],det:`Allied (${p0}) won`,amt:+half,b:'a'},
+        {name:playerNames[2],det:`${p2} lost`,amt:-stake,b:null},
+      ];
+    } else if(p2===winner){
+      results=[
+        {name:playerNames[0],det:`Allied (${p0}) lost`,amt:-half,b:'a'},
+        {name:playerNames[1],det:`Allied (${p0}) lost`,amt:-half,b:'a'},
+        {name:playerNames[2],det:`${p2} won vs allied`,amt:+stake,b:'s'},
+      ];
+    } else {
+      results=playerNames.map((n,i)=>({name:n,det:`${picks[i]} — no result`,amt:0,b:i<2?'a':null}));
+    }
+  } else {
+    const wc=picks.filter(p=>p===winner).length;
+    const pot=picks.filter(p=>p!==winner).length*stake;
+    const share=wc>0?pot/wc:0;
+    results=playerNames.map((n,i)=>picks[i]===winner
+      ?{name:n,det:`${picks[i]} won`,amt:+share,b:'s'}
+      :{name:n,det:`${picks[i]} lost`,amt:-stake,b:null}
+    );
+  }
+
+  lastCalc={matchNo:m[0],matchLabel:isPlayoff(m[0])?m[4]:`${m[4]} vs ${m[5]}`,date:m[1],stake,picks,winner,results,allied};
+  const bhtml=b=>b==='a'?'<span class="badge ba">Allied</span>':b==='s'?'<span class="badge bs">Solo</span>':'';
+  const po=isPlayoff(m[0]);
+  document.getElementById('result-area').innerHTML=`<div style="margin-top:14px">
+    ${results.map(r=>{
+      const cls=r.amt>0?'result-win':r.amt<0?'result-lose':'result-neutral';
+      const ac=r.amt>0?'win-c':r.amt<0?'lose-c':'';
+      const sign=r.amt>0?'+':r.amt<0?'':'±';
+      return `<div class="result-card ${cls}"><div><div class="r-name">${r.name}${bhtml(r.b)}${po?'<span class="badge bp">Playoff</span>':''}</div><div class="r-detail">${r.det}</div></div><div class="r-amt ${ac}">${sign}$${Math.abs(r.amt).toFixed(2)}</div></div>`;
+    }).join('')}
+    ${allied?`<div class="note">${playerNames[0]} & ${playerNames[1]} allied → $${half.toFixed(2)} each vs ${playerNames[2]}'s $${stake.toFixed(2)}</div>`:''}
+  </div>`;
+  document.getElementById('log-area').style.display='block';
+}
+
+async function logResult(){
+  if(!lastCalc) return;
+  const existing=allResults.find(r=>r.matchNo===lastCalc.matchNo);
+  if(existing&&!confirm(`Match #${lastCalc.matchNo} already has a saved result. Overwrite?`)) return;
+  const res=await apiPost({action:'saveResult',matchNo:lastCalc.matchNo,winner:lastCalc.winner,stake:lastCalc.stake});
+  if(res&&res.ok){
+    await loadAll();
+    toast(`✓ Match #${lastCalc.matchNo} saved to shared ledger`);
+    document.getElementById('log-area').style.display='none';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SEASON PICKS
+// ══════════════════════════════════════════════════════════════
+function buildPicksTabs(){
+  const el=document.getElementById('picks-tabs');
+  el.innerHTML=playerNames.map((n,i)=>`<div class="picks-tab${i===0?' active':''}" onclick="setPicksPlayer(${i},this)">${n}</div>`).join('');
+}
+
+function setPicksPlayer(i,el){
+  activePicksPlayer=i;
+  document.querySelectorAll('.picks-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderPicksTable();
+}
+
+function renderPicksTable(){
+  buildPicksTabs();
+  // Update tab text with names
+  document.querySelectorAll('.picks-tab').forEach((el,i)=>el.textContent=playerNames[i]);
+  const pi=activePicksPlayer;
+  const myPicks=allPicks.filter(p=>p.playerIndex==pi);
+  const done=myPicks.filter(p=>p.teamPick).length;
+  const total=70;
+  const pct=Math.round((done/total)*100);
+  document.getElementById('picks-prog-bar').style.width=pct+'%';
+  document.getElementById('picks-prog-label').textContent=`${done} / ${total}`;
+
+  const league=MATCHES.filter(m=>!isPlayoff(m[0]));
+  let html=`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>Your Pick</th></tr></thead><tbody>`;
+  league.forEach(m=>{
+    const saved=myPicks.find(p=>p.matchNo==m[0]);
+    const hasPick=saved&&saved.teamPick;
+    html+=`<tr>
+      <td class="match-num">${m[0]}</td>
+      <td class="match-date-cell">${m[1]}</td>
+      <td class="match-teams-cell"><strong>${m[4]}</strong><br><span style="color:var(--text3);font-size:11px">vs ${m[5]} · ${m[6]}</span></td>
+      <td>
+        <select class="pick-select${hasPick?' pick-made':''}" onchange="savePick(${pi},${m[0]},this)" id="pick-${pi}-${m[0]}">
+          <option value="">— pick —</option>
+          <option value="${m[4]}"${hasPick&&saved.teamPick===m[4]?' selected':''}>${m[4]}</option>
+          <option value="${m[5]}"${hasPick&&saved.teamPick===m[5]?' selected':''}>${m[5]}</option>
+        </select>
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('picks-table-wrap').innerHTML=html;
+}
+
+async function savePick(playerIndex,matchNo,selectEl){
+  const teamPick=selectEl.value;
+  selectEl.classList.toggle('pick-made',!!teamPick);
+  const res=await apiPost({action:'savePick',playerIndex,matchNo,teamPick});
+  if(res&&res.ok){
+    // Update local state
+    const existing=allPicks.findIndex(p=>p.playerIndex==playerIndex&&p.matchNo==matchNo);
+    if(teamPick===''){
+      if(existing>=0) allPicks.splice(existing,1);
+    } else {
+      if(existing>=0) allPicks[existing].teamPick=teamPick;
+      else allPicks.push({playerIndex,matchNo,teamPick});
+    }
+    const done=allPicks.filter(p=>p.playerIndex==activePicksPlayer&&p.teamPick).length;
+    const pct=Math.round((done/70)*100);
+    document.getElementById('picks-prog-bar').style.width=pct+'%';
+    document.getElementById('picks-prog-label').textContent=`${done} / 70`;
+    toast('✓ Pick saved');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LEDGER
+// ══════════════════════════════════════════════════════════════
+function computePayouts(result){
+  const {winner,stake,matchNo}=result;
+  const picks=playerNames.map((_,i)=>{
+    const p=allPicks.find(pk=>pk.playerIndex==i&&pk.matchNo==matchNo);
+    return p?p.teamPick:'';
+  });
+  if(picks.some(p=>!p)) return null; // incomplete picks
+  const [p0,p1,p2]=picks;
+  const allied=p0===p1;
+  const half=stake/2;
+  let amts=[0,0,0];
+  if(allied){
+    if(p0===winner){amts=[+half,+half,-stake];}
+    else if(p2===winner){amts=[-half,-half,+stake];}
+  } else {
+    const wc=picks.filter(p=>p===winner).length;
+    const pot=picks.filter(p=>p!==winner).length*stake;
+    const share=wc>0?pot/wc:0;
+    amts=picks.map(p=>p===winner?+share:-stake);
+  }
+  return {picks,allied,amts};
+}
+
+function renderLedger(){
+  const totals=[0,0,0];
+  let rows='';
+  const sorted=[...allResults].sort((a,b)=>a.matchNo-b.matchNo);
+
+  sorted.forEach(r=>{
+    const payout=computePayouts(r);
+    const m=MATCHES.find(m=>m[0]===r.matchNo)||[r.matchNo,'?','','','?','?','?'];
+    const label=isPlayoff(r.matchNo)?m[4]:`${m[4]} vs ${m[5]}`;
+
+    if(payout){
+      payout.amts.forEach((a,i)=>totals[i]+=a);
+      rows+=`<tr>
+        <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
+        <td>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">${label}</div>
+          <div style="font-size:11px;color:var(--text3)">${m[1]}</div>
+          <div class="winner-tag">🏆 ${r.winner}</div>
+        </td>
+        ${payout.amts.map(a=>{
+          const sign=a>0?'+':a<0?'':'±';
+          const cls=a>0?'positive':a<0?'negative':'zero';
+          return `<td class="amt-cell ${cls}">${sign}$${Math.abs(a).toFixed(2)}</td>`;
+        }).join('')}
+        <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
+      </tr>`;
+    } else {
+      rows+=`<tr>
+        <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
+        <td><div style="font-size:12px;color:var(--text)">${label}</div><div class="winner-tag">🏆 ${r.winner}</div></td>
+        <td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing — add in Season Picks tab</td>
+        <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
+      </tr>`;
+    }
+  });
+
+  // Summary grid
+  document.getElementById('summary-grid').innerHTML=playerNames.map((n,i)=>{
+    const v=totals[i];
+    const sign=v>0?'+':v<0?'':'±';
+    const cls=v>0?'positive':v<0?'negative':'zero';
+    return `<div class="summary-card"><div class="s-name">${n}</div><div class="s-val ${cls}">${sign}$${Math.abs(v).toFixed(2)}</div><div class="s-sub">${allResults.length} result${allResults.length!==1?'s':''}</div></div>`;
+  }).join('');
+
+  if(!sorted.length){
+    document.getElementById('ledger-body').innerHTML=`<div class="empty-state"><div class="e-icon">📭</div><p>No results logged yet.<br>Calculate a result and hit Save to Shared Ledger.</p></div>`;
+    return;
+  }
+
+  const totRow=`<tr style="border-top:1px solid var(--border2)">
+    <td></td><td style="font-size:12px;font-weight:600;color:var(--text2)">Season Total</td>
+    ${totals.map(v=>{const sign=v>0?'+':v<0?'':'±';const cls=v>0?'positive':v<0?'negative':'zero';return `<td class="amt-cell ${cls}" style="font-size:15px">${sign}$${Math.abs(v).toFixed(2)}</td>`;}).join('')}
+    <td></td>
+  </tr>`;
+
+  document.getElementById('ledger-body').innerHTML=`
+    <div style="overflow-x:auto">
+      <table class="ledger-table">
+        <thead><tr>
+          <th>#</th><th>Match</th>
+          ${playerNames.map(n=>`<th style="text-align:right">${n}</th>`).join('')}
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}${totRow}</tbody>
+      </table>
+    </div>`;
+}
+
+async function deleteResult(matchNo){
+  if(!confirm(`Remove Match #${matchNo} from the ledger?`)) return;
+  // We mark it deleted by saving with empty winner
+  allResults=allResults.filter(r=>r.matchNo!==matchNo);
+  // Remove from sheet by saving with blank (use a flag)
+  await apiPost({action:'saveResult',matchNo,winner:'__deleted__',stake:0});
+  await loadAll();
+}
+
+async function clearLedger(){
+  if(!confirm('Clear ALL results from the shared ledger? This cannot be undone.')) return;
+  for(const r of allResults){
+    await apiPost({action:'saveResult',matchNo:r.matchNo,winner:'__deleted__',stake:0});
+  }
+  allResults=[];
+  await loadAll();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════════════
+function renderSettingsPage(){
+  playerNames.forEach((n,i)=>{
+    const el=document.getElementById('pname'+i);
+    if(el) el.value=n;
+  });
+  const urlEl=document.getElementById('url-display');
+  if(urlEl) urlEl.value=SCRIPT_URL;
+  const rEl=document.getElementById('rule-display');
+  if(rEl) rEl.innerHTML=`If <strong>${playerNames[0]}</strong> & <strong>${playerNames[1]}</strong> pick the same team, they combine ($5 each at $10 stake) and bet together against <strong>${playerNames[2]}</strong>. Otherwise it's solo bets.`;
+}
+
+function updateNames(){
+  playerNames=[0,1,2].map(i=>document.getElementById('pname'+i).value.trim()||'Player '+(i+1));
+  renderSettingsPage();
+}
+
+async function saveNamesToSheet(){
+  updateNames();
+  localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
+  for(let i=0;i<3;i++){
+    await apiPost({action:'saveConfig',key:'name'+i,value:playerNames[i]});
+  }
+  buildPicksTabs();
+  renderLedger();
+  toast('✓ Names saved to shared sheet');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════════
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
