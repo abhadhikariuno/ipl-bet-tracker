@@ -382,6 +382,21 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 // ══════════════════════════════════════════════════════════════
 //  MATCH DATA
 // ══════════════════════════════════════════════════════════════
+function istToCt(timeStr){
+  // Converts an IST time string (e.g. "7:30 PM") to CDT (UTC-5, in effect during IPL season)
+  // IST = UTC+5:30, CDT = UTC-5:00 → subtract 10h 30m
+  const [time,period]=timeStr.split(' ');
+  let [h,m]=time.split(':').map(Number);
+  if(period==='PM'&&h!==12)h+=12;
+  if(period==='AM'&&h===12)h=0;
+  let totalMin=h*60+m-10*60-30;
+  if(totalMin<0)totalMin+=24*60;
+  const hh=Math.floor(totalMin/60)%24;
+  const mm=totalMin%60;
+  const ap=hh>=12?'PM':'AM';
+  const dh=hh%12||12;
+  return `${dh}:${mm.toString().padStart(2,'0')} ${ap} CDT`;
+}
 const MATCHES=[
   [1,"28 Mar","Sat","7:30 PM","Royal Challengers Bengaluru","Sunrisers Hyderabad","Bengaluru"],
   [2,"29 Mar","Sun","7:30 PM","Mumbai Indians","Kolkata Knight Riders","Mumbai"],
@@ -755,7 +770,7 @@ function onMatchChange(){
   const po=isPlayoff(m[0]);
   document.getElementById('mi').innerHTML=po
     ?`<strong>${m[4]}</strong> · ${m[1]} · ${m[6]}<br><span style="font-size:11px;color:var(--text3)">Teams TBD</span>`
-    :`<strong>${m[4]}</strong><span class="vs">vs</span><strong>${m[5]}</strong><br>${m[2]}, ${m[1]} · ${m[3]} IST · ${m[6]}`;
+    :`<strong>${m[4]}</strong><span class="vs">vs</span><strong>${m[5]}</strong><br>${m[2]}, ${m[1]} · ${istToCt(m[3])} · ${m[6]}`;
   buildPlayerPicks(m,po);
   buildWinnerSelect(m,po,[]);
   lastCalc=null;
