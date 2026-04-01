@@ -1044,6 +1044,7 @@ function computePayouts(result){
     // All 3 different — winner +$10, losers -$5 each
     amts=picks.map(p=>p===winner?+stake:-half);
   }
+  const allied=p0===p1||p0===p2;
   return {picks,allied,amts};
 }
 
