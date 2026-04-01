@@ -517,7 +517,7 @@ async function boot(){
   document.getElementById('main-content').style.display='block';
   document.getElementById('you-badge').textContent='You: '+playerNames[meIndex];
   buildMatchSelect();
-  onMatchChange();
+  autoSelectTodayMatch();
   renderSettingsPage();
   // Go straight to picks tab
   document.querySelectorAll('.tab')[1].click();
@@ -627,6 +627,9 @@ async function loadAll(){
   renderLedger();
   renderIPLTable();
   renderSettingsPage();
+  // Refresh calculator to show saved result for current match
+  const ms=document.getElementById('ms');
+  if(ms && ms.value!==undefined) onMatchChange();
   const badge=document.getElementById('you-badge');
   if(badge&&meIndex>=0) badge.textContent='You: '+playerNames[meIndex];
 }
@@ -647,6 +650,57 @@ function showPage(id,btn){
 // ══════════════════════════════════════════════════════════════
 //  CALCULATOR
 // ══════════════════════════════════════════════════════════════
+// Match date lookup — maps display dates to real dates for comparison
+const MATCH_DATES={
+  "28 Mar":"2026-03-28","29 Mar":"2026-03-29","30 Mar":"2026-03-30",
+  "31 Mar":"2026-03-31","1 Apr":"2026-04-01","2 Apr":"2026-04-02",
+  "3 Apr":"2026-04-03","4 Apr":"2026-04-04","5 Apr":"2026-04-05",
+  "6 Apr":"2026-04-06","7 Apr":"2026-04-07","8 Apr":"2026-04-08",
+  "9 Apr":"2026-04-09","10 Apr":"2026-04-10","11 Apr":"2026-04-11",
+  "12 Apr":"2026-04-12","13 Apr":"2026-04-13","14 Apr":"2026-04-14",
+  "15 Apr":"2026-04-15","16 Apr":"2026-04-16","17 Apr":"2026-04-17",
+  "18 Apr":"2026-04-18","19 Apr":"2026-04-19","20 Apr":"2026-04-20",
+  "21 Apr":"2026-04-21","22 Apr":"2026-04-22","23 Apr":"2026-04-23",
+  "24 Apr":"2026-04-24","25 Apr":"2026-04-25","26 Apr":"2026-04-26",
+  "27 Apr":"2026-04-27","28 Apr":"2026-04-28","29 Apr":"2026-04-29",
+  "30 Apr":"2026-04-30","1 May":"2026-05-01","2 May":"2026-05-02",
+  "3 May":"2026-05-03","4 May":"2026-05-04","5 May":"2026-05-05",
+  "6 May":"2026-05-06","7 May":"2026-05-07","8 May":"2026-05-08",
+  "9 May":"2026-05-09","10 May":"2026-05-10","11 May":"2026-05-11",
+  "12 May":"2026-05-12","13 May":"2026-05-13","14 May":"2026-05-14",
+  "15 May":"2026-05-15","16 May":"2026-05-16","17 May":"2026-05-17",
+  "18 May":"2026-05-18","19 May":"2026-05-19","20 May":"2026-05-20",
+  "21 May":"2026-05-21","22 May":"2026-05-22","23 May":"2026-05-23",
+  "24 May":"2026-05-24","31 May":"2026-05-31","TBC":"9999-12-31"
+};
+
+function autoSelectTodayMatch(){
+  const today=new Date().toISOString().slice(0,10); // "YYYY-MM-DD"
+  const ms=document.getElementById('ms');
+
+  // Find first match today, or most recent past match if no match today
+  let bestIdx=0;
+  let bestDate='0000-00-00';
+
+  MATCHES.forEach((m,idx)=>{
+    if(isPlayoff(m[0])) return;
+    const d=MATCH_DATES[m[1]]||'9999-12-31';
+    // Prefer today's matches first
+    if(d===today){
+      // If two matches today, take last one (evening) unless 3:30 already done
+      bestIdx=idx;
+      bestDate=d;
+    } else if(bestDate!==today && d<=today && d>=bestDate){
+      // No match today yet — take most recent past match
+      bestIdx=idx;
+      bestDate=d;
+    }
+  });
+
+  ms.value=bestIdx;
+  onMatchChange();
+}
+
 function buildMatchSelect(){
   const ms=document.getElementById('ms');
   ms.innerHTML='';
@@ -675,9 +729,68 @@ function onMatchChange(){
     :`<strong>${m[4]}</strong><span class="vs">vs</span><strong>${m[5]}</strong><br>${m[2]}, ${m[1]} · ${m[3]} IST · ${m[6]}`;
   buildPlayerPicks(m,po);
   buildWinnerSelect(m,po,[]);
-  document.getElementById('result-area').innerHTML='';
-  document.getElementById('log-area').style.display='none';
   lastCalc=null;
+
+  // Check if result already saved for this match
+  const saved=allResults.find(r=>r.matchNo===m[0]);
+  if(saved && saved.winner!=='__deleted__'){
+    // Show saved result
+    showSavedResult(m,saved);
+  } else {
+    document.getElementById('result-area').innerHTML='';
+    document.getElementById('log-area').style.display='none';
+  }
+}
+
+function showSavedResult(m,saved){
+  // Recompute payouts from saved picks
+  const picks=playerNames.map((_,i)=>{
+    const p=allPicks.find(pk=>pk.playerIndex==i&&pk.matchNo==m[0]);
+    return p?p.teamPick:'';
+  });
+  const stake=saved.stake||10;
+  const winner=saved.winner;
+  const half=stake/2;
+  const [p0,p1,p2]=picks;
+
+  let rows='';
+  if(winner==='NR'){
+    rows=playerNames.map((n,i)=>`
+      <div class="result-card result-neutral">
+        <div><div class="r-name">${n}${i===meIndex?'<span class="badge you-chip">You</span>':''}</div>
+        <div class="r-detail">No result — rain 🌧</div></div>
+        <div class="r-amt zero">$0</div>
+      </div>`).join('');
+  } else if(picks.some(p=>!p)){
+    rows=`<div class="note" style="color:var(--text2)">Result saved but picks missing — visit My Picks tab to add them.</div>`;
+  } else {
+    let amts=[0,0,0];
+    if(p0===p1){amts=p0===winner?[+half,+half,-stake]:[-half,-half,+stake];}
+    else if(p0===p2){amts=p0===winner?[+half,-stake,+half]:[-half,+stake,-half];}
+    else{amts=picks.map(p=>p===winner?+stake:-half);}
+    rows=amts.map((a,i)=>{
+      const cls=a>0?'result-win':a<0?'result-lose':'result-neutral';
+      const ac=a>0?'win-c':a<0?'lose-c':'';
+      const sign=a>0?'+':a<0?'':'±';
+      const det=picks[i]===winner?`${picks[i]} won`:`${picks[i]} lost`;
+      return `<div class="result-card ${cls}">
+        <div><div class="r-name">${playerNames[i]}${i===meIndex?'<span class="badge you-chip">You</span>':''}</div>
+        <div class="r-detail">${det}</div></div>
+        <div class="r-amt ${ac}">${sign}$${Math.abs(a).toFixed(2)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('result-area').innerHTML=`
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--green)">✓ Result saved</span>
+        <span class="winner-tag">🏆 ${winner==='NR'?'No Result':winner}</span>
+      </div>
+      ${rows}
+      <div class="note" style="margin-top:8px;font-size:12px">This result is already in the shared ledger. Recalculate below to overwrite.</div>
+    </div>`;
+  document.getElementById('log-area').style.display='none';
 }
 
 function buildPlayerPicks(m,po){
