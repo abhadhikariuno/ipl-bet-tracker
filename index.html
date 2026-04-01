@@ -249,8 +249,8 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 <div class="overlay" id="ov-loading" style="display:none">
   <div class="overlay-box" style="text-align:center;padding:40px">
     <div style="font-size:36px;margin-bottom:16px">🏏</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold);margin-bottom:8px">Loading…</div>
-    <div style="font-size:13px;color:var(--text3)">Connecting to shared sheet</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold);margin-bottom:8px">Setting up…</div>
+    <div style="font-size:13px;color:var(--text3)">Just a moment</div>
     <div class="spinner" style="margin-top:16px"></div>
   </div>
 </div>
@@ -511,14 +511,45 @@ function show(id){
 }
 
 async function boot(){
-  await loadAll();
-  show(null); // hide all overlays
+  // Show app shell immediately — don't wait for sheet
+  show(null);
   document.getElementById('main-header').style.display='flex';
   document.getElementById('main-content').style.display='block';
   document.getElementById('you-badge').textContent='You: '+playerNames[meIndex];
   buildMatchSelect();
   autoSelectTodayMatch();
   renderSettingsPage();
+
+  // Load data in background — retry up to 3 times
+  let loaded=false;
+  for(let attempt=1;attempt<=3;attempt++){
+    setSyncStatus('syncing',attempt>1?`Retrying… (${attempt}/3)`:'Connecting…');
+    const data=await apiFetch({action:'getAll'});
+    if(data){
+      allPicks=data.picks||[];
+      allResults=data.results||[];
+      if(data.config){
+        [0,1,2].forEach(i=>{if(data.config['name'+i]) playerNames[i]=data.config['name'+i];});
+        localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
+      }
+      renderPicksTable();
+      renderLedger();
+      renderIPLTable();
+      renderSettingsPage();
+      document.getElementById('you-badge').textContent='You: '+playerNames[meIndex];
+      onMatchChange(); // refresh calc with saved result
+      loaded=true;
+      break;
+    }
+    // Wait 2s before retry
+    if(attempt<3) await new Promise(r=>setTimeout(r,2000));
+  }
+
+  if(!loaded){
+    setSyncStatus('err','Cannot connect — check URL in Settings');
+    toast('⚠ Could not reach Google Sheet. Check your Apps Script URL in Settings.');
+  }
+
   // Go straight to picks tab
   document.querySelectorAll('.tab')[1].click();
 }
@@ -616,7 +647,7 @@ async function apiPost(params){
 
 async function loadAll(){
   const data=await apiFetch({action:'getAll'});
-  if(!data) return;
+  if(!data){toast('⚠ Could not sync — check connection');return;}
   allPicks=data.picks||[];
   allResults=data.results||[];
   if(data.config){
@@ -627,9 +658,7 @@ async function loadAll(){
   renderLedger();
   renderIPLTable();
   renderSettingsPage();
-  // Refresh calculator to show saved result for current match
-  const ms=document.getElementById('ms');
-  if(ms && ms.value!==undefined) onMatchChange();
+  onMatchChange(); // refresh calc with latest saved result
   const badge=document.getElementById('you-badge');
   if(badge&&meIndex>=0) badge.textContent='You: '+playerNames[meIndex];
 }
