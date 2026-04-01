@@ -735,19 +735,31 @@ function calc(){
     return;
   }
 
-  const [p0,p1,p2]=picks;const allied=p0===p1;const half=stake/2;
+  const [p0,p1,p2]=picks;const half=stake/2;
+  // Find who's allied (same pick) and who's the solo player
+  // P2 & P3 always pick opposite, so P1 always lands on one side
   let results=[];
-  if(allied){
-    if(p0===winner) results=[{i:0,det:`Allied (${p0}) won`,amt:+half,b:'a'},{i:1,det:`Allied (${p0}) won`,amt:+half,b:'a'},{i:2,det:`${p2} lost`,amt:-stake,b:null}];
-    else if(p2===winner) results=[{i:0,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:1,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:2,det:`${p2} won vs allied`,amt:+stake,b:'s'}];
-    else results=[0,1,2].map(i=>({i,det:`${picks[i]} — no result`,amt:0,b:i<2?'a':null}));
+  if(p0===p1){
+    // P1 & P2 allied vs P3
+    if(p0===winner){
+      results=[{i:0,det:`Allied (${p0}) won`,amt:+half,b:'a'},{i:1,det:`Allied (${p0}) won`,amt:+half,b:'a'},{i:2,det:`${p2} lost`,amt:-stake,b:null}];
+    } else {
+      results=[{i:0,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:1,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:2,det:`${p2} won`,amt:+stake,b:'s'}];
+    }
+  } else if(p0===p2){
+    // P1 & P3 allied vs P2
+    if(p0===winner){
+      results=[{i:0,det:`Allied (${p0}) won`,amt:+half,b:'a'},{i:1,det:`${p1} lost`,amt:-stake,b:null},{i:2,det:`Allied (${p2}) won`,amt:+half,b:'a'}];
+    } else {
+      results=[{i:0,det:`Allied (${p0}) lost`,amt:-half,b:'a'},{i:1,det:`${p1} won`,amt:+stake,b:'s'},{i:2,det:`Allied (${p2}) lost`,amt:-half,b:'a'}];
+    }
   } else {
-    // P2 & P3 always pick opposite — always a 2v1
-    // Winners (2 players) get +half each, loser pays full stake
+    // All 3 different — winner gets $5 from each loser (+$10), losers pay $5 each
     results=[0,1,2].map(i=>picks[i]===winner
-      ?{i,det:`${picks[i]} won`,amt:+(stake/2),b:'s'}
-      :{i,det:`${picks[i]} lost`,amt:-stake,b:null});
+      ?{i,det:`${picks[i]} won`,amt:+stake,b:'s'}
+      :{i,det:`${picks[i]} lost`,amt:-half,b:null});
   }
+  const allied=p0===p1||p0===p2;
   lastCalc={matchNo:m[0],matchLabel:isPlayoff(m[0])?m[4]:`${m[4]} vs ${m[5]}`,date:m[1],stake,picks,winner,results:results.map(r=>({...r,name:playerNames[r.i]})),allied};
   const bhtml=b=>b==='a'?'<span class="badge ba">Allied</span>':b==='s'?'<span class="badge bs">Solo</span>':'';
   const po=isPlayoff(m[0]);
@@ -759,7 +771,7 @@ function calc(){
       const youChip=r.i===meIndex?'<span class="badge you-chip">You</span>':'';
       return `<div class="result-card ${cls}"><div><div class="r-name">${playerNames[r.i]}${youChip}${bhtml(r.b)}${po?'<span class="badge bp">Playoff</span>':''}</div><div class="r-detail">${r.det}</div></div><div class="r-amt ${ac}">${sign}$${Math.abs(r.amt).toFixed(2)}</div></div>`;
     }).join('')}
-    ${allied?`<div class="note">${playerNames[0]} & ${playerNames[1]} allied → $${half.toFixed(2)} each vs ${playerNames[2]}'s $${stake.toFixed(2)}</div>`:''}
+    ${p0===p1?`<div class="note">${playerNames[0]} & ${playerNames[1]} allied → $${half.toFixed(2)} each vs ${playerNames[2]}'s $${stake.toFixed(2)}</div>`:p0===p2?`<div class="note">${playerNames[0]} & ${playerNames[2]} allied → $${half.toFixed(2)} each vs ${playerNames[1]}'s $${stake.toFixed(2)}</div>`:''}
   </div>`;
   document.getElementById('log-area').style.display='block';
 }
@@ -875,14 +887,20 @@ function computePayouts(result){
     return p?p.teamPick:'';
   });
   if(picks.some(p=>!p)) return null;
-  const [p0,p1,p2]=picks;const allied=p0===p1;const half=stake/2;
+  const [p0,p1,p2]=picks;const half=stake/2;
   let amts=[0,0,0];
-  if(allied){
+  if(winner==='NR'){amts=[0,0,0];}
+  else if(p0===p1){
+    // P1 & P2 allied vs P3
     if(p0===winner) amts=[+half,+half,-stake];
-    else if(p2===winner) amts=[-half,-half,+stake];
+    else amts=[-half,-half,+stake];
+  } else if(p0===p2){
+    // P1 & P3 allied vs P2
+    if(p0===winner) amts=[+half,-stake,+half];
+    else amts=[-half,+stake,-half];
   } else {
-    // Always 2v1 — winners get half stake each, loser pays full
-    amts=picks.map(p=>p===winner?+(stake/2):-stake);
+    // All 3 different — winner +$10, losers -$5 each
+    amts=picks.map(p=>p===winner?+stake:-half);
   }
   return {picks,allied,amts};
 }
