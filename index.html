@@ -555,7 +555,10 @@ function initApp(){
   }
 
   SCRIPT_URL=url;
-  if(names) try{playerNames=JSON.parse(names);}catch(e){}
+  // HARDCODED_NAMES always wins; only fall back to localStorage if no hardcoded names
+  if(!HARDCODED_NAMES.length){
+    if(names) try{playerNames=JSON.parse(names);}catch(e){}
+  }
 
   if(me===null){
     // URL known but player not chosen yet
@@ -593,7 +596,7 @@ async function boot(){
     if(data){
       allPicks=data.picks||[];
       allResults=data.results||[];
-      if(data.config){
+      if(data.config && !HARDCODED_NAMES.length){
         [0,1,2].forEach(i=>{if(data.config['name'+i]) playerNames[i]=data.config['name'+i];});
         localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
       }
@@ -715,7 +718,7 @@ async function loadAll(){
   if(!data){toast('⚠ Could not sync — check connection');return;}
   allPicks=data.picks||[];
   allResults=data.results||[];
-  if(data.config){
+  if(data.config && !HARDCODED_NAMES.length){
     [0,1,2].forEach(i=>{if(data.config['name'+i]) playerNames[i]=data.config['name'+i];});
     localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
   }
