@@ -209,6 +209,20 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 </head>
 <body>
 
+<!-- ── SCREEN 0: PASSWORD ── -->
+<div class="overlay" id="ov-password" style="display:none">
+  <div class="overlay-box" style="max-width:340px">
+    <h2>🔒 IPL Bet Tracker</h2>
+    <p>Enter the password to continue.</p>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="pw-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')pwSubmit()">
+    </div>
+    <div id="pw-error" style="font-size:12px;color:var(--red);margin-bottom:12px;display:none">Wrong password. Try again.</div>
+    <button class="btn-main" onclick="pwSubmit()">ENTER →</button>
+  </div>
+</div>
+
 <!-- ── SCREEN 1: FIRST-TIME SETUP (admin only) ── -->
 <div class="overlay" id="ov-setup" style="display:none">
   <div class="overlay-box">
@@ -220,9 +234,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
     </div>
     <div class="slbl" style="margin-bottom:8px">Player Names</div>
     <div class="names-grid">
-      <div class="field"><label>Player 1</label><input type="text" id="sn0" placeholder="e.g. Abhad"></div>
-      <div class="field"><label>Player 2</label><input type="text" id="sn1" placeholder="e.g. Friend 2"></div>
-      <div class="field"><label>Player 3</label><input type="text" id="sn2" placeholder="e.g. Friend 3"></div>
+      <div class="field"><label>Player 1</label><input type="text" id="sn0" value="Abhinav"></div>
+      <div class="field"><label>Player 2</label><input type="text" id="sn1" value="Ajar"></div>
+      <div class="field"><label>Player 3</label><input type="text" id="sn2" value="Susmita"></div>
     </div>
     <button class="btn-main" onclick="setupSave()">SAVE &amp; LAUNCH →</button>
     <div class="setup-note">
@@ -480,8 +494,13 @@ const AVATAR_BG=['rgba(245,200,66,0.15)','rgba(62,207,142,0.12)','rgba(245,101,1
 // ══════════════════════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════════════════════
+// ── Hardcoded config — fill in HARDCODED_URL once; all players skip the setup screen ──
+const HARDCODED_URL=''; // paste your Apps Script URL here, e.g. 'https://script.google.com/macros/s/.../exec'
+const HARDCODED_NAMES=['Abhinav','Ajar','Susmita'];
+const HARDCODED_PASSWORD='ipl2026'; // change this to whatever password you want
+
 let SCRIPT_URL='';
-let playerNames=['Player 1','Player 2','Player 3'];
+let playerNames=[...HARDCODED_NAMES];
 let meIndex=-1; // which player am I (0,1,2)
 let allPicks=[];
 let allResults=[];
@@ -494,12 +513,43 @@ const isPlayoff=no=>PLAYOFF_NOS.includes(no);
 //  BOOT SEQUENCE
 // ══════════════════════════════════════════════════════════════
 window.onload=()=>{
+  // ── Password gate ──
+  if(HARDCODED_PASSWORD && !sessionStorage.getItem('ipl26_auth')){
+    show('ov-password');
+    setTimeout(()=>document.getElementById('pw-input').focus(),100);
+    return;
+  }
+  initApp();
+};
+
+function pwSubmit(){
+  const val=document.getElementById('pw-input').value;
+  if(val===HARDCODED_PASSWORD){
+    sessionStorage.setItem('ipl26_auth','1');
+    document.getElementById('pw-error').style.display='none';
+    initApp();
+  } else {
+    document.getElementById('pw-error').style.display='block';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+function initApp(){
+  // If a URL is hardcoded, bootstrap localStorage automatically so no one sees setup
+  if(HARDCODED_URL){
+    if(!localStorage.getItem('ipl26_url')){
+      localStorage.setItem('ipl26_url',HARDCODED_URL);
+      localStorage.setItem('ipl26_names',JSON.stringify(HARDCODED_NAMES));
+    }
+  }
+
   const url  =localStorage.getItem('ipl26_url');
   const names=localStorage.getItem('ipl26_names');
   const me   =localStorage.getItem('ipl26_me');
 
   if(!url){
-    // First ever visit — show admin setup
+    // First ever visit — show admin setup (only reached if HARDCODED_URL is blank)
     show('ov-setup');
     return;
   }
@@ -516,10 +566,10 @@ window.onload=()=>{
   meIndex=Number(me);
   show('ov-loading');
   boot();
-};
+}
 
 function show(id){
-  ['ov-setup','ov-who','ov-loading'].forEach(i=>{
+  ['ov-password','ov-setup','ov-who','ov-loading'].forEach(i=>{
     const el=document.getElementById(i);
     if(el) el.style.display=i===id?'flex':'none';
   });
@@ -574,7 +624,7 @@ async function boot(){
 // ══════════════════════════════════════════════════════════════
 async function setupSave(){
   const url=document.getElementById('setup-url').value.trim();
-  const n=[0,1,2].map(i=>document.getElementById('sn'+i).value.trim()||'Player '+(i+1));
+  const n=[0,1,2].map(i=>document.getElementById('sn'+i).value.trim()||HARDCODED_NAMES[i]);
   if(!url){toast('⚠ Paste your Apps Script URL');return;}
 
   SCRIPT_URL=url;
@@ -1127,7 +1177,7 @@ function renderSettingsPage(){
   const r=document.getElementById('rule-display');
   if(r) r.innerHTML=`<strong>${playerNames[0]}</strong> picks every match freely.<br><strong>${playerNames[1]}</strong> &amp; <strong>${playerNames[2]}</strong> always pick opposite teams.<br>Result is always a <strong>2v1</strong>: winners get <strong>+$5 each</strong>, loser pays <strong>-$10</strong>.<br>Stake is <strong>$10</strong> for league matches. Playoffs stake set separately.`;
 }
-function updateNames(){playerNames=[0,1,2].map(i=>document.getElementById('pname'+i).value.trim()||'Player '+(i+1));renderSettingsPage();}
+function updateNames(){playerNames=[0,1,2].map(i=>document.getElementById('pname'+i).value.trim()||HARDCODED_NAMES[i]);renderSettingsPage();}
 async function saveNamesToSheet(){
   updateNames();
   localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
