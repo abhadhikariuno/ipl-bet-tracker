@@ -1129,12 +1129,15 @@ function renderLedger(){
   sorted.forEach(r=>{
     const payout=computePayouts(r);
     const m=MATCHES.find(m=>m[0]===r.matchNo)||[r.matchNo,'?','','','?','?','?'];
-    const label=isPlayoff(r.matchNo)?m[4]:`${m[4]} vs ${m[5]}`;
+    const loser=r.winner===m[4]?m[5]:m[4];
+    const matchDisplay=isPlayoff(r.matchNo)
+      ?`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span>`
+      :`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span> <span style="color:var(--text3);font-size:11px">vs</span> <span style="color:var(--text2)">${loser}</span>`;
     if(payout){
       payout.amts.forEach((a,i)=>totals[i]+=a);
       rows+=`<tr>
         <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
-        <td><div style="font-size:12px;font-weight:500">${label}</div><div style="font-size:11px;color:var(--text3)">${m[1]}</div><div class="winner-tag">🏆 ${r.winner}</div></td>
+        <td><div style="font-size:12px;font-weight:500">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td>
         ${payout.amts.map((a,i)=>{
           const sign=a>0?'+':a<0?'':'±';const cls=a>0?'positive':a<0?'negative':'zero';
           const isMe=i===meIndex?'font-weight:600':'';
@@ -1143,7 +1146,7 @@ function renderLedger(){
         <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
       </tr>`;
     } else {
-      rows+=`<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td><td><div style="font-size:12px">${label}</div><div class="winner-tag">🏆 ${r.winner}</div></td><td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing</td><td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td></tr>`;
+      rows+=`<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td><td><div style="font-size:12px">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td><td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing</td><td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td></tr>`;
     }
   });
 
