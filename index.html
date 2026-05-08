@@ -287,6 +287,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
     <div class="tab-bar">
       <button class="tab active" onclick="showPage('calculator',this)">Calc</button>
       <button class="tab" onclick="showPage('picks',this)">My Picks</button>
+      <button class="tab" onclick="showPage('payout',this)">Payout</button>
       <button class="tab" onclick="showPage('ledger',this)">Ledger</button>
       <button class="tab" onclick="showPage('table',this)">Table</button>
       <button class="tab" onclick="showPage('settings',this)">Settings</button>
@@ -336,10 +337,14 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
     </div>
   </div>
 
-  <!-- LEDGER -->
-  <div id="page-ledger" class="page">
+  <!-- PAYOUT -->
+  <div id="page-payout" class="page">
     <div class="summary-grid" id="summary-grid"></div>
     <div class="card" id="pairwise-body"></div>
+  </div>
+
+  <!-- LEDGER -->
+  <div id="page-ledger" class="page">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="card-title" style="margin-bottom:0">📊 Season Ledger</div>
@@ -729,6 +734,7 @@ async function loadAll(){
     }
   }
   renderPicksTable();
+  renderPayout();
   renderLedger();
   renderIPLTable();
   renderSettingsPage();
@@ -745,6 +751,7 @@ function showPage(id,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
+  if(id==='payout') renderPayout();
   if(id==='ledger') renderLedger();
   if(id==='table') renderIPLTable();
   if(id==='picks'){activePicksTab=meIndex;renderPicksTable();}
@@ -1128,52 +1135,31 @@ function computePayouts(result){
   return {picks,allied,amts};
 }
 
-function renderLedger(){
+function renderPayout(){
   const totals=[0,0,0];
   const flow=[[0,0,0],[0,0,0],[0,0,0]];
-  let rows='';
-  const sorted=[...allResults].sort((a,b)=>a.matchNo-b.matchNo);
-  sorted.forEach(r=>{
+  allResults.forEach(r=>{
+    if(r.winner==='__deleted__') return;
     const payout=computePayouts(r);
-    const m=MATCHES.find(m=>m[0]===r.matchNo)||[r.matchNo,'?','','','?','?','?'];
-    const loser=r.winner===m[4]?m[5]:m[4];
-    const matchDisplay=isPlayoff(r.matchNo)
-      ?`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span>`
-      :`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span> <span style="color:var(--text3);font-size:11px">vs</span> <span style="color:var(--text2)">${loser}</span>`;
-    if(payout){
-      payout.amts.forEach((a,i)=>totals[i]+=a);
-      if(r.winner!=='__deleted__'){
-        const half=(r.stake||10)/2;
-        const losers=[0,1,2].filter(i=>payout.amts[i]<0);
-        const winners=[0,1,2].filter(i=>payout.amts[i]>0);
-        losers.forEach(l=>winners.forEach(w=>{flow[l][w]+=half;}));
-      }
-      rows+=`<tr>
-        <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
-        <td><div style="font-size:12px;font-weight:500">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td>
-        ${payout.amts.map((a,i)=>{
-          const sign=a>0?'+':a<0?'':'±';const cls=a>0?'positive':a<0?'negative':'zero';
-          const isMe=i===meIndex?'font-weight:600':'';
-          return `<td class="amt-cell ${cls}" style="${isMe}">${sign}$${Math.abs(a).toFixed(2)}</td>`;
-        }).join('')}
-        <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
-      </tr>`;
-    } else {
-      rows+=`<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td><td><div style="font-size:12px">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td><td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing</td><td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td></tr>`;
-    }
+    if(!payout) return;
+    payout.amts.forEach((a,i)=>totals[i]+=a);
+    const half=(r.stake||10)/2;
+    const losers=[0,1,2].filter(i=>payout.amts[i]<0);
+    const winners=[0,1,2].filter(i=>payout.amts[i]>0);
+    losers.forEach(l=>winners.forEach(w=>{flow[l][w]+=half;}));
   });
 
+  const matchCount=allResults.filter(r=>r.winner!=='__deleted__').length;
   document.getElementById('summary-grid').innerHTML=playerNames.map((n,i)=>{
     const v=totals[i];const sign=v>0?'+':v<0?'':'±';const cls=v>0?'positive':v<0?'negative':'zero';
     const isMe=i===meIndex;
-    return `<div class="summary-card" style="${isMe?'border-color:'+AVATAR_COLORS[i]+';':'' }">
+    return `<div class="summary-card" style="${isMe?'border-color:'+AVATAR_COLORS[i]+';':''}">
       <div class="s-name" style="${isMe?'color:'+AVATAR_COLORS[i]:''}">${n}${isMe?' ★':''}</div>
       <div class="s-val ${cls}">${sign}$${Math.abs(v).toFixed(2)}</div>
-      <div class="s-sub">${allResults.length} match${allResults.length!==1?'es':''}</div>
+      <div class="s-sub">${matchCount} match${matchCount!==1?'es':''}</div>
     </div>`;
   }).join('');
 
-  // Pairwise balances
   const pairRows=[[0,1],[0,2],[1,2]].map(([i,j])=>{
     const net=flow[i][j]-flow[j][i];
     const abs=Math.abs(net);
@@ -1193,6 +1179,35 @@ function renderLedger(){
   document.getElementById('pairwise-body').innerHTML=`
     <div class="card-title">⚖ Pairwise Balances</div>
     <table style="width:100%;border-collapse:collapse"><tbody>${pairRows}</tbody></table>`;
+}
+
+function renderLedger(){
+  let rows='';
+  const totals=[0,0,0];
+  const sorted=[...allResults].sort((a,b)=>a.matchNo-b.matchNo);
+  sorted.forEach(r=>{
+    const payout=computePayouts(r);
+    const m=MATCHES.find(m=>m[0]===r.matchNo)||[r.matchNo,'?','','','?','?','?'];
+    const loser=r.winner===m[4]?m[5]:m[4];
+    const matchDisplay=isPlayoff(r.matchNo)
+      ?`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span>`
+      :`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span> <span style="color:var(--text3);font-size:11px">vs</span> <span style="color:var(--text2)">${loser}</span>`;
+    if(payout){
+      payout.amts.forEach((a,i)=>totals[i]+=a);
+      rows+=`<tr>
+        <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
+        <td><div style="font-size:12px;font-weight:500">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td>
+        ${payout.amts.map((a,i)=>{
+          const sign=a>0?'+':a<0?'':'±';const cls=a>0?'positive':a<0?'negative':'zero';
+          const isMe=i===meIndex?'font-weight:600':'';
+          return `<td class="amt-cell ${cls}" style="${isMe}">${sign}$${Math.abs(a).toFixed(2)}</td>`;
+        }).join('')}
+        <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
+      </tr>`;
+    } else {
+      rows+=`<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td><td><div style="font-size:12px">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td><td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing</td><td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td></tr>`;
+    }
+  });
 
   if(!sorted.length){
     document.getElementById('ledger-body').innerHTML=`<div class="empty-state"><div class="e-icon">📭</div><p>No results yet.<br>Calculate a result and save it.</p></div>`;
