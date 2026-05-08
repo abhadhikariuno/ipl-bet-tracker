@@ -995,6 +995,11 @@ function calc(){
 
 async function logResult(){
   if(!lastCalc) return;
+  // Enforce sequential results — all prior league matches must be logged first
+  if(!isPlayoff(lastCalc.matchNo)){
+    const firstMissing=MATCHES.find(m=>!isPlayoff(m[0])&&m[0]<lastCalc.matchNo&&!allResults.some(r=>r.matchNo===m[0]&&r.winner!=='__deleted__'));
+    if(firstMissing){toast(`⚠ Log Match #${firstMissing[0]} (${firstMissing[4]} vs ${firstMissing[5]}) result first`);return;}
+  }
   const existing=allResults.find(r=>r.matchNo===lastCalc.matchNo);
   if(existing&&!confirm(`Match #${lastCalc.matchNo} already saved. Overwrite?`)) return;
   const res=await apiPost({action:'saveResult',matchNo:lastCalc.matchNo,winner:lastCalc.winner,stake:lastCalc.stake});
