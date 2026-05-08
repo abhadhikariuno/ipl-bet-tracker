@@ -339,6 +339,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
   <!-- LEDGER -->
   <div id="page-ledger" class="page">
     <div class="summary-grid" id="summary-grid"></div>
+    <div class="card" id="pairwise-body"></div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="card-title" style="margin-bottom:0">📊 Season Ledger</div>
@@ -1128,7 +1129,9 @@ function computePayouts(result){
 }
 
 function renderLedger(){
-  const totals=[0,0,0];let rows='';
+  const totals=[0,0,0];
+  const flow=[[0,0,0],[0,0,0],[0,0,0]];
+  let rows='';
   const sorted=[...allResults].sort((a,b)=>a.matchNo-b.matchNo);
   sorted.forEach(r=>{
     const payout=computePayouts(r);
@@ -1139,6 +1142,12 @@ function renderLedger(){
       :`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span> <span style="color:var(--text3);font-size:11px">vs</span> <span style="color:var(--text2)">${loser}</span>`;
     if(payout){
       payout.amts.forEach((a,i)=>totals[i]+=a);
+      if(r.winner!=='__deleted__'){
+        const half=(r.stake||10)/2;
+        const losers=[0,1,2].filter(i=>payout.amts[i]<0);
+        const winners=[0,1,2].filter(i=>payout.amts[i]>0);
+        losers.forEach(l=>winners.forEach(w=>{flow[l][w]+=half;}));
+      }
       rows+=`<tr>
         <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
         <td><div style="font-size:12px;font-weight:500">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td>
@@ -1163,6 +1172,27 @@ function renderLedger(){
       <div class="s-sub">${allResults.length} match${allResults.length!==1?'es':''}</div>
     </div>`;
   }).join('');
+
+  // Pairwise balances
+  const pairRows=[[0,1],[0,2],[1,2]].map(([i,j])=>{
+    const net=flow[i][j]-flow[j][i];
+    const abs=Math.abs(net);
+    const iMe=i===meIndex;const jMe=j===meIndex;
+    const nameI=`<span style="${iMe?'color:'+AVATAR_COLORS[i]+';font-weight:700':''}">${playerNames[i]}${iMe?' ★':''}</span>`;
+    const nameJ=`<span style="${jMe?'color:'+AVATAR_COLORS[j]+';font-weight:700':''}">${playerNames[j]}${jMe?' ★':''}</span>`;
+    let owes,cls;
+    if(abs<0.005){owes=`<span style="color:var(--text3)">Settled</span>`;cls='zero';}
+    else if(net>0){owes=`${nameI} owes ${nameJ}`;cls='negative';}
+    else{owes=`${nameJ} owes ${nameI}`;cls='negative';}
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 10px;font-size:13px;color:var(--text2)">${playerNames[i]} ↔ ${playerNames[j]}</td>
+      <td style="padding:8px 10px;font-size:13px">${owes}</td>
+      <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:15px;font-weight:600;text-align:right" class="${cls}">${abs<0.005?'±$0.00':'$'+abs.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pairwise-body').innerHTML=`
+    <div class="card-title">⚖ Pairwise Balances</div>
+    <table style="width:100%;border-collapse:collapse"><tbody>${pairRows}</tbody></table>`;
 
   if(!sorted.length){
     document.getElementById('ledger-body').innerHTML=`<div class="empty-state"><div class="e-icon">📭</div><p>No results yet.<br>Calculate a result and save it.</p></div>`;
