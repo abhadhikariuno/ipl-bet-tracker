@@ -339,6 +339,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
   <!-- PAYOUT -->
   <div id="page-payout" class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--gold)">💸 Payout Summary</div>
+      <button class="btn btn-sm" onclick="loadAll()" style="border-color:var(--border2);color:var(--text2)">↻ Refresh</button>
+    </div>
     <div class="summary-grid" id="summary-grid"></div>
     <div class="card" id="pairwise-body"></div>
   </div>
