@@ -622,8 +622,6 @@ async function boot(){
     toast('⚠ Could not reach Google Sheet. Check your Apps Script URL in Settings.');
   }
 
-  // Go straight to picks tab
-  document.querySelectorAll('.tab')[1].click();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1004,6 +1002,7 @@ async function logResult(){
   if(existing&&!confirm(`Match #${lastCalc.matchNo} already saved. Overwrite?`)) return;
   const res=await apiPost({action:'saveResult',matchNo:lastCalc.matchNo,winner:lastCalc.winner,stake:lastCalc.stake});
   if(res&&res.ok){await loadAll();toast(`✓ Match #${lastCalc.matchNo} saved`);document.getElementById('log-area').style.display='none';}
+  else{toast('⚠ Save failed — check connection and try again');}
 }
 
 // ══════════════════════════════════════════════════════════════
