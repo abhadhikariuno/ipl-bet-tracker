@@ -1048,8 +1048,22 @@ function renderPicksTable(){
       ? `<div class="lock-banner" style="background:rgba(62,207,142,0.08);border-color:rgba(62,207,142,.3);color:var(--green)"><span class="lock-icon">✅</span><div><strong>Your picks are complete!</strong><br><span style="font-size:12px;opacity:.8">Waiting for others to finish — ${totalPicks}/210 total picks made.</span></div></div>`
       : '';
 
+  // Conflict validation — matches where P2 and P3 picked the same team
+  const conflicts=MATCHES.filter(m=>!isPlayoff(m[0])).filter(m=>{
+    const p1pick=allPicks.find(p=>p.playerIndex==1&&p.matchNo==m[0]);
+    const p2pick=allPicks.find(p=>p.playerIndex==2&&p.matchNo==m[0]);
+    return p1pick&&p2pick&&p1pick.teamPick&&p1pick.teamPick===p2pick.teamPick;
+  });
+  const conflictBanner=conflicts.length
+    ?`<div class="lock-banner" style="background:rgba(245,101,101,0.08);border-color:rgba(245,101,101,.3);color:var(--red);margin-bottom:10px">
+        <span class="lock-icon">⚠️</span>
+        <div><strong>${conflicts.length} pick conflict${conflicts.length>1?'s':''} — ${playerNames[1]} & ${playerNames[2]} picked the same team</strong><br>
+        <span style="font-size:12px;opacity:.85">${conflicts.map(m=>`#${m[0]} ${m[4]} vs ${m[5]}`).join(' · ')}</span></div>
+      </div>`
+    :'';
+
   const league=MATCHES.filter(m=>!isPlayoff(m[0]));
-  let html=lockBanner+`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe&&!isLocked?'Your Pick':'Pick'}</th></tr></thead><tbody>`;
+  let html=conflictBanner+lockBanner+`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe&&!isLocked?'Your Pick':'Pick'}</th></tr></thead><tbody>`;
   league.forEach(m=>{
     const saved=myPicks.find(p=>p.matchNo==m[0]);
     const hasPick=saved&&saved.teamPick;
