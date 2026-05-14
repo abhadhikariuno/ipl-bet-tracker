@@ -149,12 +149,6 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .s-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;}
 .s-sub{font-size:11px;color:var(--text3);margin-top:4px;}
 .positive{color:var(--green);}.negative{color:var(--red);}.zero{color:var(--text3);}
-.ledger-table{width:100%;border-collapse:collapse;font-size:13px;}
-.ledger-table th{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
-.ledger-table th:not(:nth-child(1)):not(:nth-child(2)){text-align:right;}
-.ledger-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
-.ledger-table tr:last-child td{border-bottom:none;}
-.ledger-table tr:hover td{background:rgba(255,255,255,.02);}
 .amt-cell{font-family:'DM Mono',monospace;text-align:right;}
 .winner-tag{font-size:10px;color:var(--gold);background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:4px;padding:1px 6px;display:inline-block;font-weight:600;}
 .rain-tag{font-size:10px;color:#7dd3fc;background:rgba(125,211,252,.1);border:1px solid rgba(125,211,252,.25);border-radius:4px;padding:1px 6px;display:inline-block;font-weight:600;}
@@ -293,7 +287,6 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
       <button class="tab active" onclick="showPage('calculator',this)">Calc</button>
       <button class="tab" onclick="showPage('picks',this)">My Picks</button>
       <button class="tab" onclick="showPage('payout',this)">Payout</button>
-      <button class="tab" onclick="showPage('ledger',this)">Ledger</button>
       <button class="tab" onclick="showPage('table',this)">Table</button>
       <button class="tab" onclick="showPage('settings',this)">Settings</button>
     </div>
@@ -350,20 +343,6 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
     </div>
     <div class="summary-grid" id="summary-grid"></div>
     <div class="card" id="pairwise-body"></div>
-  </div>
-
-  <!-- LEDGER -->
-  <div id="page-ledger" class="page">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="card-title" style="margin-bottom:0">📊 Season Ledger</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm" onclick="loadAll()" style="border-color:var(--border2);color:var(--text2)">↻ Refresh</button>
-          <button class="btn btn-sm btn-danger" onclick="clearLedger()">Clear All</button>
-        </div>
-      </div>
-      <div id="ledger-body"><div class="loading-row"><span class="spinner"></span>Loading…</div></div>
-    </div>
   </div>
 
   <!-- IPL TABLE -->
@@ -620,7 +599,6 @@ async function boot(){
         }
       }
       renderPicksTable();
-      renderLedger();
       renderIPLTable();
       renderSettingsPage();
       document.getElementById('you-badge').textContent='You: '+playerNames[meIndex];
@@ -744,7 +722,6 @@ async function loadAll(){
   }
   renderPicksTable();
   renderPayout();
-  renderLedger();
   renderIPLTable();
   renderSettingsPage();
   onMatchChange(); // refresh calc with latest saved result
@@ -761,7 +738,6 @@ function showPage(id,btn){
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
   if(id==='payout') renderPayout();
-  if(id==='ledger') renderLedger();
   if(id==='table') renderIPLTable();
   if(id==='picks'){activePicksTab=meIndex;renderPicksTable();}
 }
@@ -1089,16 +1065,13 @@ function renderPicksTable(){
       }
 
       // build the result cell: winner tag + payout amount
-      const winnerChip=isNR
-        ?`<span class="rain-tag">🌧 Rained Out</span>`
-        :`<span class="winner-tag">🏆 ${result.winner}</span>`;
-      let amtHtml='';
-      if(amt!==null){
+      if(isNR){
+        resultCell=`<div style="text-align:right"><span class="rain-tag">🌧</span></div>`;
+      } else if(amt!==null){
         const sign=amt>0?'+':amt<0?'−':'±';
         const cls=amt>0?'positive':amt<0?'negative':'zero';
-        amtHtml=`<span class="inline-amt ${cls}">${sign}$${Math.abs(amt).toFixed(2)}</span>`;
+        resultCell=`<div style="text-align:right"><span class="inline-amt ${cls}">${sign}$${Math.abs(amt).toFixed(2)}</span></div>`;
       }
-      resultCell=`<div style="text-align:right">${winnerChip}${amtHtml}</div>`;
     }
 
     const pickChipClass=`${isLocked?'locked-pick':'pick-made pick-select'}${pickWinClass}`;
@@ -1236,53 +1209,11 @@ function renderPayout(){
     <table style="width:100%;border-collapse:collapse"><tbody>${pairRows}</tbody></table>`;
 }
 
-function renderLedger(){
-  let rows='';
-  const totals=[0,0,0];
-  const sorted=[...allResults].sort((a,b)=>a.matchNo-b.matchNo);
-  sorted.forEach(r=>{
-    const payout=computePayouts(r);
-    const m=MATCHES.find(m=>m[0]===r.matchNo)||[r.matchNo,'?','','','?','?','?'];
-    const loser=r.winner===m[4]?m[5]:m[4];
-    const matchDisplay=isPlayoff(r.matchNo)
-      ?`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span>`
-      :`<span style="color:var(--gold);font-weight:600">🏆 ${r.winner}</span> <span style="color:var(--text3);font-size:11px">vs</span> <span style="color:var(--text2)">${loser}</span>`;
-    if(payout){
-      payout.amts.forEach((a,i)=>totals[i]+=a);
-      rows+=`<tr>
-        <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td>
-        <td><div style="font-size:12px;font-weight:500">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td>
-        ${payout.amts.map((a,i)=>{
-          const sign=a>0?'+':a<0?'':'±';const cls=a>0?'positive':a<0?'negative':'zero';
-          const isMe=i===meIndex?'font-weight:600':'';
-          return `<td class="amt-cell ${cls}" style="${isMe}">${sign}$${Math.abs(a).toFixed(2)}</td>`;
-        }).join('')}
-        <td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td>
-      </tr>`;
-    } else {
-      rows+=`<tr><td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${r.matchNo}</span></td><td><div style="font-size:12px">${matchDisplay}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${m[1]}</div></td><td colspan="3" style="font-size:12px;color:var(--text3);text-align:center">Picks missing</td><td style="text-align:right"><button class="del-btn" onclick="deleteResult(${r.matchNo})">✕</button></td></tr>`;
-    }
-  });
-
-  if(!sorted.length){
-    document.getElementById('ledger-body').innerHTML=`<div class="empty-state"><div class="e-icon">📭</div><p>No results yet.<br>Calculate a result and save it.</p></div>`;
-    return;
-  }
-  const totRow=`<tr style="border-top:1px solid var(--border2)"><td></td><td style="font-size:12px;font-weight:600;color:var(--text2)">Season Total</td>${totals.map((v,i)=>{const sign=v>0?'+':v<0?'':'±';const cls=v>0?'positive':v<0?'negative':'zero';const isMe=i===meIndex?'font-size:16px;font-weight:700':'font-size:15px';return `<td class="amt-cell ${cls}" style="${isMe}">${sign}$${Math.abs(v).toFixed(2)}</td>`;}).join('')}<td></td></tr>`;
-  document.getElementById('ledger-body').innerHTML=`<div style="overflow-x:auto"><table class="ledger-table"><thead><tr><th>#</th><th>Match</th>${playerNames.map((n,i)=>`<th style="text-align:right${i===meIndex?';color:'+AVATAR_COLORS[i]:''}">${n}${i===meIndex?' ★':''}</th>`).join('')}<th></th></tr></thead><tbody>${rows}${totRow}</tbody></table></div>`;
-}
-
 async function deleteResult(matchNo){
   if(!confirm(`Remove Match #${matchNo}?`)) return;
   allResults=allResults.filter(r=>r.matchNo!==matchNo);
   await apiPost({action:'saveResult',matchNo,winner:'__deleted__',stake:0});
   await loadAll();
-}
-
-async function clearLedger(){
-  if(!confirm('Clear ALL results? Cannot be undone.')) return;
-  for(const r of allResults) await apiPost({action:'saveResult',matchNo:r.matchNo,winner:'__deleted__',stake:0});
-  allResults=[];await loadAll();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1301,7 +1232,7 @@ async function saveNamesToSheet(){
   localStorage.setItem('ipl26_names',JSON.stringify(playerNames));
   for(let i=0;i<3;i++) await apiPost({action:'saveConfig',key:'name'+i,value:playerNames[i]});
   const badge=document.getElementById('you-badge');if(badge) badge.textContent='You: '+playerNames[meIndex];
-  renderPicksTable();renderLedger();
+  renderPicksTable();
   toast('✓ Names saved');
 }
 function resetAll(){if(!confirm('Reset everything on this device?')) return;localStorage.clear();location.reload();}
