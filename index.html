@@ -137,6 +137,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .progress-bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .4s ease;}
 .progress-label{font-size:12px;color:var(--text2);white-space:nowrap;font-family:'DM Mono',monospace;}
 .locked-pick{font-size:12px;color:var(--text2);padding:4px 8px;background:var(--surface3);border-radius:6px;border:1px solid var(--border);}
+.pick-won{color:var(--green)!important;background:rgba(62,207,142,.12)!important;border-color:rgba(62,207,142,.3)!important;}
+.pick-lost{color:var(--red)!important;background:rgba(245,101,101,.1)!important;border-color:rgba(245,101,101,.25)!important;}
+.result-col{text-align:right;width:90px;}
+.inline-amt{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;display:block;margin-top:2px;}
 
 /* ── LEDGER ── */
 .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
@@ -153,6 +157,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .ledger-table tr:hover td{background:rgba(255,255,255,.02);}
 .amt-cell{font-family:'DM Mono',monospace;text-align:right;}
 .winner-tag{font-size:10px;color:var(--gold);background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:4px;padding:1px 6px;display:inline-block;font-weight:600;}
+.rain-tag{font-size:10px;color:#7dd3fc;background:rgba(125,211,252,.1);border:1px solid rgba(125,211,252,.25);border-radius:4px;padding:1px 6px;display:inline-block;font-weight:600;}
 .del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;}
 .del-btn:hover{color:var(--red);background:var(--red-dim);}
 
@@ -1063,33 +1068,65 @@ function renderPicksTable(){
     :'';
 
   const league=MATCHES.filter(m=>!isPlayoff(m[0]));
-  let html=conflictBanner+lockBanner+`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe&&!isLocked?'Your Pick':'Pick'}</th></tr></thead><tbody>`;
+  let html=conflictBanner+lockBanner+`<table class="picks-table"><thead><tr><th>#</th><th>Date</th><th>Match</th><th>${isMe&&!isLocked?'Your Pick':'Pick'}</th><th class="result-col">Result</th></tr></thead><tbody>`;
   league.forEach(m=>{
     const saved=myPicks.find(p=>p.matchNo==m[0]);
     const hasPick=saved&&saved.teamPick;
-    const pickCell = hasPick
-      ? `<span class="${isLocked?'locked-pick':'pick-made pick-select'}" style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:12px">🏏 ${saved.teamPick}</span>`
+
+    // check if this match has a saved result
+    const result=allResults.find(r=>r.matchNo==m[0]&&r.winner!=='__deleted__');
+    let resultCell='<span style="font-size:11px;color:var(--text3)">—</span>';
+    let pickWinClass='';
+
+    if(result){
+      const payout=computePayouts(result);
+      const amt=payout?payout.amts[pi]:null;
+      const isNR=result.winner==='NR';
+
+      // highlight the pick chip green/red based on win or loss
+      if(hasPick&&!isNR){
+        pickWinClass=saved.teamPick===result.winner?' pick-won':' pick-lost';
+      }
+
+      // build the result cell: winner tag + payout amount
+      const winnerChip=isNR
+        ?`<span class="rain-tag">🌧 Rained Out</span>`
+        :`<span class="winner-tag">🏆 ${result.winner}</span>`;
+      let amtHtml='';
+      if(amt!==null){
+        const sign=amt>0?'+':amt<0?'−':'±';
+        const cls=amt>0?'positive':amt<0?'negative':'zero';
+        amtHtml=`<span class="inline-amt ${cls}">${sign}$${Math.abs(amt).toFixed(2)}</span>`;
+      }
+      resultCell=`<div style="text-align:right">${winnerChip}${amtHtml}</div>`;
+    }
+
+    const pickChipClass=`${isLocked?'locked-pick':'pick-made pick-select'}${pickWinClass}`;
+    const pickChip=hasPick
+      ? `<span class="${pickChipClass}" style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:12px">🏏 ${saved.teamPick}</span>`
       : `<span style="font-size:12px;color:var(--text3)">No pick yet</span>`;
 
     if(isMe && !isLocked){
-      // Editable
+      // Editable — select still has win/loss class applied via wrapper span after pick
+      const selectClass=`pick-select${hasPick?' pick-made':''}${pickWinClass}`;
       html+=`<tr>
         <td class="match-num">${m[0]}</td>
         <td class="match-date-cell">${m[1]}</td>
         <td><strong style="font-size:13px">${m[4]}</strong><br><span style="color:var(--text3);font-size:11px">vs ${m[5]} · ${m[6]}</span></td>
-        <td><select class="pick-select${hasPick?' pick-made':''}" onchange="savePick(${pi},${m[0]},this)">
+        <td><select class="${selectClass}" onchange="savePick(${pi},${m[0]},this)">
           <option value="">— pick —</option>
           <option value="${m[4]}"${hasPick&&saved.teamPick===m[4]?' selected':''}>${m[4]}</option>
           <option value="${m[5]}"${hasPick&&saved.teamPick===m[5]?' selected':''}>${m[5]}</option>
         </select></td>
+        <td>${resultCell}</td>
       </tr>`;
     } else {
-      // Read-only (either locked, or viewing someone else)
       html+=`<tr>
         <td class="match-num">${m[0]}</td>
         <td class="match-date-cell">${m[1]}</td>
         <td><strong style="font-size:13px">${m[4]}</strong><br><span style="color:var(--text3);font-size:11px">vs ${m[5]} · ${m[6]}</span></td>
-        <td>${pickCell}</td>
+        <td>${pickChip}</td>
+        <td>${resultCell}</td>
       </tr>`;
     }
   });
